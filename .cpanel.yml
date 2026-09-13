@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home3/fnuyssjv/public_html/
+    - export DEPLOYPATH=/home3/fnuyssjv/comfortable-indigo-fox.89-42-208-234.cpanel.site/
     - /bin/cp -R * $DEPLOYPATH
