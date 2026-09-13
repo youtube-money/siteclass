@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بیرون‌رفتن — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .outing-card { padding: 18px 20px; margin-bottom: 16px; }
+  .outing-card h3 { margin: 0 0 6px; }
+  .outing-card .meta { font-size: 12px; color: var(--text-disabled); }
+  .mini-row { display: flex; gap: 8px; margin-top: 8px; }
+  .mini-row input { flex: 1; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:700px;">
+  <h1>برنامه‌ریزی بیرون‌رفتن</h1>
+
+  <div class="glass" style="padding:20px; margin-bottom:24px;">
+    <h3 style="margin-top:0;">ایدهٔ جدید ثبت کن</h3>
+    <div class="field"><input type="text" id="new-title" placeholder="عنوان ایده (مثلا: پارک جمعه)"></div>
+    <div class="field"><input type="text" id="new-location" placeholder="لوکیشن (اختیاری)"></div>
+    <div class="field"><textarea id="new-desc" placeholder="توضیحات (اختیاری)"></textarea></div>
+    <button class="btn btn-primary" id="create-btn">ثبت ایده</button>
+  </div>
+
+  <div id="outings-list"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('outings.html').then((user) => { if (user) loadOutings(); });
+
+  async function loadOutings() {
+    const data = await api.getOutings();
+    const container = document.getElementById('outings-list');
+    if (data.outings.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز ایده‌ای ثبت نشده.</p>';
+      return;
+    }
+    container.innerHTML = data.outings.map(renderOuting).join('');
+
+    data.outings.forEach((o) => {
+      document.getElementById(`time-btn-${o.id}`)?.addEventListener('click', () => addTime(o.id));
+      document.getElementById(`comment-btn-${o.id}`)?.addEventListener('click', () => addComment(o.id));
+    });
+  }
+
+  function renderOuting(o) {
+    const availabilitiesHtml = o.availabilities.length
+      ? o.availabilities.map((a) => `<li>${a.display_name}: ${a.available_time}</li>`).join('')
+      : '<li style="color:var(--text-disabled)">هنوز کسی زمان اعلام نکرده</li>';
+
+    const commentsHtml = o.comments.map((c) => `<li><b>${c.display_name}:</b> ${escapeHtml(c.content)}</li>`).join('');
+
+    return `<div class="glass outing-card">
+      <h3>${escapeHtml(o.title)}</h3>
+      ${o.location ? `<p>📍 ${escapeHtml(o.location)}</p>` : ''}
+      ${o.description ? `<p>${escapeHtml(o.description)}</p>` : ''}
+      <p class="meta">پیشنهاددهنده: ${o.creator_name}</p>
+
+      <b style="font-size:13px;">زمان‌های اعلام‌شده:</b>
+      <ul style="padding-inline-start:18px; font-size:14px;">${availabilitiesHtml}</ul>
+      <div class="mini-row">
+        <input type="text" id="time-input-${o.id}" placeholder="زمانی که تو آزادی">
+        <button class="btn btn-ghost" id="time-btn-${o.id}">ثبت زمان</button>
+      </div>
+
+      <b style="font-size:13px; display:block; margin-top:14px;">چت کوتاه:</b>
+      <ul style="padding-inline-start:18px; font-size:14px;">${commentsHtml}</ul>
+      <div class="mini-row">
+        <input type="text" id="comment-input-${o.id}" placeholder="نظرت رو بنویس...">
+        <button class="btn btn-ghost" id="comment-btn-${o.id}">ارسال</button>
+      </div>
+    </div>`;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function addTime(outingId) {
+    const input = document.getElementById(`time-input-${outingId}`);
+    if (!input.value.trim()) return;
+    await api.addOutingAvailability(outingId, input.value.trim());
+    loadOutings();
+  }
+
+  async function addComment(outingId) {
+    const input = document.getElementById(`comment-input-${outingId}`);
+    if (!input.value.trim()) return;
+    await api.addOutingComment(outingId, input.value.trim());
+    loadOutings();
+  }
+
+  document.getElementById('create-btn').addEventListener('click', async () => {
+    const title = document.getElementById('new-title').value.trim();
+    const location = document.getElementById('new-location').value.trim();
+    const description = document.getElementById('new-desc').value.trim();
+    if (!title) return;
+    await api.createOuting({ title, location, description });
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-location').value = '';
+    document.getElementById('new-desc').value = '';
+    loadOutings();
+  });
+</script>
+</body>
+</html>

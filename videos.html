@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ویدیوهای آموزشی — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .video-card { padding: 18px 20px; margin-bottom: 20px; }
+  iframe.embed { width: 100%; aspect-ratio: 16/9; border: 0; border-radius: 12px; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:720px;">
+  <h1>ویدیوهای آموزشی</h1>
+
+  <div class="glass" style="padding:20px; margin-bottom:24px;">
+    <h3 style="margin-top:0;">افزودن ویدیوی جدید</h3>
+    <div class="field"><input type="text" id="v-title" placeholder="عنوان"></div>
+    <div class="field"><input type="text" id="v-url" placeholder="لینک ویدیو (آپارات / یوتیوب / گوگل‌درایو)"></div>
+    <div class="field"><textarea id="v-desc" placeholder="توضیحات (اختیاری)"></textarea></div>
+    <button class="btn btn-primary" id="add-btn">افزودن</button>
+  </div>
+
+  <div id="videos-list"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('videos.html').then((user) => { if (user) loadVideos(); });
+
+  function getEmbedUrl(url) {
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+    const drive = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+    if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+    return null;
+  }
+
+  async function loadVideos() {
+    const data = await api.getVideos();
+    const container = document.getElementById('videos-list');
+    if (data.videos.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز ویدیویی اضافه نشده.</p>';
+      return;
+    }
+    container.innerHTML = data.videos.map((v) => {
+      const embed = getEmbedUrl(v.video_url);
+      return `<div class="glass video-card">
+        <h3>${v.title}</h3>
+        ${v.description ? `<p>${v.description}</p>` : ''}
+        ${embed ? `<iframe class="embed" src="${embed}" allowfullscreen></iframe>` : `<a href="${v.video_url}" target="_blank">🎬 مشاهدهٔ ویدیو</a>`}
+        <p style="font-size:12px; color:var(--text-disabled); margin-top:8px;">افزوده‌شده توسط ${v.added_by_name}</p>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('add-btn').addEventListener('click', async () => {
+    const title = document.getElementById('v-title').value.trim();
+    const video_url = document.getElementById('v-url').value.trim();
+    const description = document.getElementById('v-desc').value.trim();
+    if (!title || !video_url) return;
+    await api.addVideo({ title, video_url, description });
+    document.getElementById('v-title').value = '';
+    document.getElementById('v-url').value = '';
+    document.getElementById('v-desc').value = '';
+    loadVideos();
+  });
+</script>
+</body>
+</html>

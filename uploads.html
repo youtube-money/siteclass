@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>آپلودها — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:700px;">
+  <h1>آپلود فایل</h1>
+  <p style="color:var(--text-muted); font-size:14px;">فایل‌ها (عکس، جزوه، ویدیوی کوتاه) روی گوگل‌درایو کلاس ذخیره می‌شن.</p>
+
+  <div class="glass" style="padding:20px; margin-bottom:24px;">
+    <input type="file" id="file-input">
+    <button class="btn btn-primary" id="upload-btn" style="margin-inline-start:10px;">آپلود کن</button>
+    <p class="error-text" id="error-msg" style="display:none; margin-top:10px;"></p>
+  </div>
+
+  <h3>فایل‌های آپلودشده</h3>
+  <ul id="uploads-list" style="padding-inline-start:20px;"></ul>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('uploads.html').then((user) => { if (user) loadUploads(); });
+
+  async function loadUploads() {
+    const data = await api.getAllUploads();
+    document.getElementById('uploads-list').innerHTML = data.uploads
+      .map((u) => `<li style="margin-bottom:6px;"><a href="${u.drive_view_link}" target="_blank">${u.filename}</a>
+        <span style="color:var(--text-muted); font-size:12px;"> — ${u.display_name}</span></li>`)
+      .join('') || '<p style="color:var(--text-muted)">هنوز فایلی آپلود نشده.</p>';
+  }
+
+  document.getElementById('upload-btn').addEventListener('click', async () => {
+    const file = document.getElementById('file-input').files[0];
+    if (!file) return;
+    const btn = document.getElementById('upload-btn');
+    const errorEl = document.getElementById('error-msg');
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'در حال آپلود...';
+    try {
+      await api.uploadFile(file);
+      document.getElementById('file-input').value = '';
+      await loadUploads();
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'آپلود کن';
+    }
+  });
+</script>
+</body>
+</html>

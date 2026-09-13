@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>افزودن بازی — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tabs button.active { color: var(--violet-400); }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:700px;">
+  <h1>بازی خودت رو اضافه کن</h1>
+  <p style="color:var(--text-muted); font-size:14px;">
+    بازی توی یه محیط ایزوله (iframe sandbox) اجرا می‌شه، یعنی به بقیهٔ سایت یا اطلاعات کاربرها دسترسی نداره.
+    اگه می‌خوای امتیاز بازیت توی لیدربورد ثبت بشه، وقتی بازی تموم شد این خط رو صدا بزن
+    (به‌جای <span class="mono">SCORE_VALUE</span> عدد امتیاز نهایی رو بذار):
+  </p>
+  <pre style="background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:12px; direction:ltr; text-align:left; color:var(--text-secondary);">window.parent.postMessage({ type: 'game-score', score: SCORE_VALUE }, '*');</pre>
+  <p style="color:var(--text-disabled); font-size:12px; margin-top:-4px;">
+    توجه: چون بازی ایزوله‌ست، fetch/localStorage/کوکی داخلش کار نمی‌کنه — این تنها راهیه که امتیاز به سایت می‌رسه.
+  </p>
+
+  <div class="field"><input type="text" id="g-title" placeholder="عنوان بازی"></div>
+  <div class="field"><input type="text" id="g-desc" placeholder="توضیح کوتاه (اختیاری)"></div>
+
+  <div class="tabs">
+    <button class="btn btn-ghost active" data-gtab="upload">📤 آپلود فایل HTML</button>
+    <button class="btn btn-ghost" data-gtab="code">💻 نوشتن کد</button>
+  </div>
+
+  <div class="gtab-panel" data-gtab-panel="upload">
+    <input type="file" id="g-file" accept=".html">
+  </div>
+  <div class="gtab-panel" data-gtab-panel="code" style="display:none;">
+    <textarea id="g-code" rows="16" placeholder="<html>...کد کامل بازی...</html>" style="font-family:monospace; direction:ltr; font-size:13px;"></textarea>
+  </div>
+
+  <p class="error-text" id="error-msg" style="display:none; margin-top:10px;"></p>
+  <button class="btn btn-primary" id="submit-btn" style="margin-top:14px;">ثبت بازی</button>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('games.html');
+
+  let mode = 'upload';
+  document.querySelectorAll('[data-gtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      mode = btn.dataset.gtab;
+      document.querySelectorAll('[data-gtab]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('[data-gtab-panel]').forEach((p) => p.style.display = p.dataset.gtabPanel === mode ? 'block' : 'none');
+    });
+  });
+
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    const title = document.getElementById('g-title').value.trim();
+    const description = document.getElementById('g-desc').value.trim();
+    const errorEl = document.getElementById('error-msg');
+    errorEl.style.display = 'none';
+
+    if (!title) {
+      errorEl.textContent = 'عنوان بازی رو بنویس';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    try {
+      let payload = { title, description };
+
+      if (mode === 'upload') {
+        const file = document.getElementById('g-file').files[0];
+        if (!file) throw new Error('یه فایل HTML انتخاب کن');
+        const uploadResult = await api.uploadFile(file);
+        payload.file_link = uploadResult.fileId; // شناسهٔ فایل درایو، نه لینک نمایشی — برای پراکسی سمت سرور لازمه
+      } else {
+        const code = document.getElementById('g-code').value.trim();
+        if (!code) throw new Error('کد بازی رو بنویس');
+        payload.html_content = code;
+      }
+
+      const result = await api.submitStudentGame(payload);
+      location.href = `games-play.html?id=${result.id}`;
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

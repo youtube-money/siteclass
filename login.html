@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ورود — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-card { width: 100%; max-width: 380px; padding: 40px 32px; text-align: center; }
+  .logo-badge {
+    width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--violet-500), var(--cyan-500));
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    box-shadow: 0 0 40px rgba(139,92,246,0.5);
+  }
+  .login-card h1 { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+  .login-card p.sub { color: var(--text-muted); font-size: 14px; margin: 0 0 26px; }
+  .switch-link { margin-top: 16px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .switch-link:hover { color: var(--violet-400); }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<div class="login-wrap">
+  <div class="glass login-card">
+    <div class="logo-badge">🎓</div>
+    <h1 id="form-title">ورود به کلاس</h1>
+    <p class="sub" id="form-sub">با نام کاربری و رمزت وارد شو</p>
+
+    <form id="auth-form">
+      <div class="field">
+        <label>نام کاربری</label>
+        <input type="text" id="username" required>
+      </div>
+      <div class="field" id="display-name-field" style="display:none">
+        <label>نام نمایشی</label>
+        <input type="text" id="display_name">
+      </div>
+      <div class="field">
+        <label>رمز عبور</label>
+        <input type="password" id="password" required>
+      </div>
+      <p class="error-text" id="error-msg" style="display:none"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%" id="submit-btn">ورود</button>
+    </form>
+
+    <div class="switch-link" id="switch-link">حساب نداری؟ ثبت‌نام کن</div>
+  </div>
+</div>
+
+<script src="assets/js/api.js"></script>
+<script>
+  let isRegister = false;
+
+  document.getElementById('switch-link').addEventListener('click', () => {
+    isRegister = !isRegister;
+    document.getElementById('form-title').textContent = isRegister ? 'ثبت‌نام' : 'ورود به کلاس';
+    document.getElementById('form-sub').textContent = isRegister ? 'یه حساب جدید بساز' : 'با نام کاربری و رمزت وارد شو';
+    document.getElementById('display-name-field').style.display = isRegister ? 'block' : 'none';
+    document.getElementById('submit-btn').textContent = isRegister ? 'ثبت‌نام' : 'ورود';
+    document.getElementById('switch-link').textContent = isRegister ? 'حساب داری؟ وارد شو' : 'حساب نداری؟ ثبت‌نام کن';
+  });
+
+  document.getElementById('auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('error-msg');
+    errorEl.style.display = 'none';
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const displayName = document.getElementById('display_name').value.trim();
+
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+
+    try {
+      if (isRegister) {
+        await api.register(username, displayName, password);
+      }
+      await api.login(username, password);
+      location.href = 'dashboard.html';
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جزوه — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .book-card { padding: 16px; cursor: pointer; }
+  .chapter-pill { display: inline-block; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.05); font-size: 12px; margin-inline-end: 6px; margin-bottom: 6px; cursor: pointer; border: 1px solid transparent; }
+  .chapter-pill.active { border-color: var(--violet-400); color: var(--violet-400); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tabs button.active { color: var(--violet-400); }
+  pre.prompt-box { white-space: pre-wrap; font-family: 'JetBrains Mono', monospace; font-size: 12px; direction: ltr; text-align: left; margin: 0; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:760px;">
+  <h1>جزوه</h1>
+  <p style="color:var(--text-muted); font-size:14px;">جزوه‌ها بر اساس کتاب و پودمان دسته‌بندی می‌شن.</p>
+
+  <div class="glass card admin-add" id="admin-add" style="display:none;">
+    <h3 style="margin-top:0;">افزودن کتاب جدید (ادمین)</h3>
+    <div class="row">
+      <div class="field"><input id="new-book-title" placeholder="اسم کتاب درسی"></div>
+      <div class="field"><input id="new-book-chapters" type="number" placeholder="تعداد پودمان" min="1" max="30"></div>
+    </div>
+    <button class="btn btn-primary" id="add-book-btn">افزودن کتاب</button>
+  </div>
+
+  <div id="books-list"></div>
+
+  <div id="chapter-detail" style="display:none; margin-top:24px;">
+    <h2 id="chapter-title"></h2>
+
+    <div class="tabs">
+      <button class="btn btn-ghost active" data-ntab="upload">📤 آپلود جزوه</button>
+      <button class="btn btn-ghost" data-ntab="create">✍️ ساخت جزوه با AI</button>
+    </div>
+
+    <div class="ntab-panel glass card" data-ntab-panel="upload">
+      <input type="file" id="upload-file">
+      <button class="btn btn-primary" id="upload-submit-btn" style="margin-top:10px;">آپلود</button>
+    </div>
+
+    <div class="ntab-panel glass card" data-ntab-panel="create" style="display:none;">
+      <p style="font-size:13px; color:var(--text-secondary); margin-top:0;">
+        این پرامپت رو کپی کن، همراه با <b>عکس جزوهٔ دست‌نویست</b> به ChatGPT بده — متنت رو تمیز و خوانا بازنویسی می‌کنه.
+      </p>
+      <pre class="prompt-box" id="note-ai-prompt">من عکس یک صفحه از جزوهٔ دست‌نویسم رو پیوست کردم. لطفاً متن داخل عکس رو دقیق و بدون تغییر محتوا پیاده‌سازی کن، فقط:
+- غلط‌های تایپی واضح رو تصحیح کن (نه محتوا رو تغییر بده)
+- ساختار رو با تیتر، زیرتیتر، و لیست‌های مرتب سازمان‌دهی کن تا خیلی راحت‌تر از نسخهٔ دست‌نویس خونده بشه
+- فرمول‌ها و نمودارها رو در قالب متنی قابل‌فهم توضیح بده
+- در پایان، خروجی نهایی رو به‌صورت متن Markdown تمیز بده تا بتونم مستقیم ذخیره‌اش کنم</pre>
+      <button class="btn btn-ghost" style="margin-top:8px;" onclick="copyNotePrompt()">کپی پرامپت</button>
+
+      <div class="field" style="margin-top:16px;">
+        <label>نتیجه‌ای که ChatGPT بهت داد رو این‌جا پیست کن</label>
+        <textarea id="pasted-result" rows="6"></textarea>
+      </div>
+      <button class="btn btn-primary" id="create-submit-btn">ذخیرهٔ جزوه</button>
+    </div>
+
+    <h3 style="margin-top:20px;">جزوه‌های این پودمان</h3>
+    <div id="notes-list"></div>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  let activeBookId = null, activeChapterId = null;
+
+  requirePageLogin('notes.html').then(async (user) => {
+    if (!user) return;
+    if (user.role === 'admin') document.getElementById('admin-add').style.display = 'block';
+    loadBooks();
+  });
+
+  async function loadBooks() {
+    const data = await api.getBooks();
+    const container = document.getElementById('books-list');
+    if (data.books.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز کتابی اضافه نشده.</p>';
+      return;
+    }
+    container.innerHTML = data.books.map((b) => `
+      <div class="glass card book-card">
+        <b>📘 ${b.title}</b>
+        <div style="margin-top:10px;">
+          ${b.chapters.map((c) => `<span class="chapter-pill" data-book="${b.id}" data-chapter="${c.id}" data-name="${b.title} — ${c.chapter_name}">${c.chapter_name} (${c.note_count})</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.chapter-pill').forEach((pill) => {
+      pill.addEventListener('click', () => {
+        container.querySelectorAll('.chapter-pill').forEach((p) => p.classList.remove('active'));
+        pill.classList.add('active');
+        openChapter(Number(pill.dataset.book), Number(pill.dataset.chapter), pill.dataset.name);
+      });
+    });
+  }
+
+  function openChapter(bookId, chapterId, name) {
+    activeBookId = bookId;
+    activeChapterId = chapterId;
+    document.getElementById('chapter-detail').style.display = 'block';
+    document.getElementById('chapter-title').textContent = name;
+    loadNotes();
+  }
+
+  async function loadNotes() {
+    const data = await api.getNotes(activeChapterId);
+    const container = document.getElementById('notes-list');
+    container.innerHTML = data.notes.map((n) => `
+      <div class="glass card" style="padding:12px 16px;">
+        <p style="font-size:12px; color:var(--text-disabled); margin:0 0 6px;">${n.display_name} — ${n.note_type === 'upload' ? 'آپلودشده' : 'ساخته‌شده با AI'}</p>
+        ${n.file_link ? `<a href="${n.file_link}" target="_blank">📎 مشاهدهٔ فایل</a>` : `<div style="font-size:13px; white-space:pre-wrap;">${escapeHtml(n.text_content).slice(0, 300)}${n.text_content.length > 300 ? '...' : ''}</div>`}
+      </div>
+    `).join('') || '<p style="color:var(--text-disabled); font-size:13px;">هنوز جزوه‌ای اضافه نشده.</p>';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.querySelectorAll('[data-ntab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-ntab]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('[data-ntab-panel]').forEach((p) => p.style.display = p.dataset.ntabPanel === btn.dataset.ntab ? 'block' : 'none');
+    });
+  });
+
+  function copyNotePrompt() {
+    navigator.clipboard.writeText(document.getElementById('note-ai-prompt').textContent);
+    event.target.textContent = 'کپی شد ✓';
+    setTimeout(() => event.target.textContent = 'کپی پرامپت', 1500);
+  }
+
+  document.getElementById('add-book-btn')?.addEventListener('click', async () => {
+    const title = document.getElementById('new-book-title').value.trim();
+    const chapters = Number(document.getElementById('new-book-chapters').value);
+    if (!title || !chapters) return;
+    await api.createBook(title, chapters);
+    document.getElementById('new-book-title').value = '';
+    document.getElementById('new-book-chapters').value = '';
+    loadBooks();
+  });
+
+  document.getElementById('upload-submit-btn').addEventListener('click', async () => {
+    const file = document.getElementById('upload-file').files[0];
+    if (!file || !activeChapterId) return;
+    const uploadResult = await api.uploadFile(file);
+    await api.createNote({
+      book_id: activeBookId, chapter_id: activeChapterId,
+      note_type: 'upload', file_link: uploadResult.viewLink,
+    });
+    document.getElementById('upload-file').value = '';
+    loadNotes();
+    loadBooks();
+  });
+
+  document.getElementById('create-submit-btn').addEventListener('click', async () => {
+    const text = document.getElementById('pasted-result').value.trim();
+    if (!text || !activeChapterId) return;
+    await api.createNote({
+      book_id: activeBookId, chapter_id: activeChapterId,
+      note_type: 'created', text_content: text,
+    });
+    document.getElementById('pasted-result').value = '';
+    loadNotes();
+    loadBooks();
+  });
+</script>
+</body>
+</html>

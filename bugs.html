@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رفع اشکال — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .bug-card { padding: 16px 18px; margin-bottom: 14px; }
+  .comment { padding: 8px 0; border-bottom: 1px solid var(--glass-border); font-size: 13px; }
+  .comment b { color: var(--cyan-400); }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:700px;">
+  <h1>رفع اشکال</h1>
+  <p style="color:var(--text-muted); font-size:14px;">مشکلی دیدی؟ اینجا بگو، بقیه کمک می‌کنن حلش کنی.</p>
+
+  <div class="glass card">
+    <div class="field"><input id="bug-title" placeholder="عنوان مشکل (مثلا: پیام صوتی ارسال نمی‌شه)"></div>
+    <div class="field"><textarea id="bug-desc" rows="2" placeholder="توضیح کامل‌تر..."></textarea></div>
+    <button class="btn btn-primary" id="report-btn">ثبت مشکل</button>
+  </div>
+
+  <div id="bugs-list" style="margin-top:20px;"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('bugs.html').then((user) => { if (user) loadBugs(); });
+
+  async function loadBugs() {
+    const data = await api.getBugs();
+    const container = document.getElementById('bugs-list');
+    if (data.bugs.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز مشکلی گزارش نشده — عالیه! 🎉</p>';
+      return;
+    }
+    container.innerHTML = data.bugs.map((b) => `
+      <div class="glass bug-card">
+        <b>🐛 ${escapeHtml(b.title)}</b>
+        ${b.description ? `<p style="margin:6px 0;">${escapeHtml(b.description)}</p>` : ''}
+        <p style="font-size:12px; color:var(--text-disabled); margin:0 0 10px;">گزارش‌شده توسط ${b.reporter_name}</p>
+        ${b.comments.map((c) => `<div class="comment"><b>${c.display_name}:</b> ${escapeHtml(c.content)}</div>`).join('')}
+        <div class="field" style="margin-top:10px;">
+          <input placeholder="نظرت رو بنویس..." data-bug-id="${b.id}" class="comment-input">
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.comment-input').forEach((input) => {
+      input.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter' || !input.value.trim()) return;
+        await api.addBugComment(Number(input.dataset.bugId), input.value.trim());
+        loadBugs();
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('report-btn').addEventListener('click', async () => {
+    const title = document.getElementById('bug-title').value.trim();
+    const description = document.getElementById('bug-desc').value.trim();
+    if (!title) return;
+    await api.createBug(title, description);
+    document.getElementById('bug-title').value = '';
+    document.getElementById('bug-desc').value = '';
+    loadBugs();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شبکهٔ اجتماعی — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>.post { padding: 14px 18px; margin-bottom: 12px; }</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:600px;">
+  <h1>شبکهٔ اجتماعی 🔒</h1>
+  <p style="color:var(--text-muted); font-size:14px;">این بخش فقط برای اعضای نقش ویژه قابل‌دیدنه.</p>
+
+  <div class="glass card">
+    <div class="field"><textarea id="post-content" rows="2" placeholder="چه خبر؟"></textarea></div>
+    <button class="btn btn-primary" id="post-btn">پست کن</button>
+  </div>
+
+  <div id="posts-list" style="margin-top:20px;"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageRole('social.html', ['special', 'admin']).then((user) => { if (user) loadPosts(); });
+
+  async function loadPosts() {
+    const data = await api.getSocialPosts();
+    const container = document.getElementById('posts-list');
+    container.innerHTML = data.posts.map((p) => `
+      <div class="glass post">
+        <b>${p.avatar_emoji || ''} ${p.display_name}</b>
+        <p style="margin:6px 0 0;">${escapeHtml(p.content)}</p>
+      </div>
+    `).join('') || '<p style="color:var(--text-disabled)">هنوز پستی نیست.</p>';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('post-btn').addEventListener('click', async () => {
+    const content = document.getElementById('post-content').value.trim();
+    if (!content) return;
+    await api.createSocialPost(content);
+    document.getElementById('post-content').value = '';
+    loadPosts();
+  });
+</script>
+</body>
+</html>

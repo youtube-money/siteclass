@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>خانه — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .dash-header { text-align: center; margin-bottom: 40px; }
+  .dash-header h2 { font-size: 28px; font-weight: 800; margin: 0 0 8px; }
+  .dash-header p { color: var(--text-muted); margin: 0; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main>
+  <div class="dash-header">
+    <h2 id="greeting">سلام 👋</h2>
+    <p>یه بخش رو انتخاب کن</p>
+  </div>
+  <div class="grid" id="portal-grid">
+    <a href="chat.html" class="glass portal c-violet"><span class="icon">💬</span><h3>چت کلاس</h3><p>گروهی و پی‌وی</p></a>
+    <a href="schedule.html" class="glass portal c-cyan"><span class="icon">📅</span><h3>برنامهٔ کلاسی</h3><p>ساعت و درس‌ها</p></a>
+    <a href="lessons.html" class="glass portal c-emerald"><span class="icon">📚</span><h3>دروس</h3><p>محتوای هر درس</p></a>
+    <a href="notes.html" class="glass portal c-violet"><span class="icon">📝</span><h3>جزوه</h3><p>آپلود یا ساخت با AI</p></a>
+    <a href="games.html" class="glass portal c-emerald"><span class="icon">🎮</span><h3>سرگرمی</h3><p>بازی‌ها و لیدربورد</p></a>
+    <a href="outings.html" class="glass portal c-coral"><span class="icon">🌳</span><h3>بیرون‌رفتن</h3><p>ایده و هماهنگی زمان</p></a>
+    <a href="videos.html" class="glass portal c-cyan"><span class="icon">📺</span><h3>ویدیوهای آموزشی</h3><p>آپارات، یوتیوب و بیشتر</p></a>
+    <a href="uploads.html" class="glass portal c-violet"><span class="icon">📁</span><h3>آپلودها</h3><p>عکس و جزوه</p></a>
+    <a href="projects.html" class="glass portal c-emerald"><span class="icon">🧩</span><h3>تکلیف و پروژه</h3><p>هر درس، کلید AI خودت</p></a>
+    <a href="account.html" class="glass portal c-gold"><span class="icon">👤</span><h3>حساب کاربری</h3><p>پروفایل و آواتار</p></a>
+    <a href="donate.html" class="glass portal c-gold"><span class="icon">💛</span><h3>دونیت</h3><p>حمایت از هاست کلاس</p></a>
+    <a href="bugs.html" class="glass portal c-coral"><span class="icon">🛠</span><h3>رفع اشکال</h3><p>گزارش و کمک به حل</p></a>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('dashboard.html').then((user) => {
+    if (!user) return;
+    document.getElementById('greeting').textContent = `سلام، ${user.display_name} 👋`;
+
+    if (user.role === 'special' || user.role === 'admin') {
+      document.getElementById('portal-grid').insertAdjacentHTML('beforeend',
+        `<a href="social.html" class="glass portal c-gold"><span class="icon">🔒</span><h3>شبکهٔ اجتماعی</h3><p>ویژهٔ اعضای خاص</p></a>`
+      );
+    }
+    if (user.role === 'admin') {
+      document.getElementById('portal-grid').insertAdjacentHTML('beforeend',
+        `<a href="admin.html" class="glass portal c-coral"><span class="icon">🛡</span><h3>پنل ادمین</h3><p>نقش‌ها و کلیدهای API</p></a>`
+      );
+    }
+  });
+</script>
+</body>
+</html>

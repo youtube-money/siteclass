@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>چت — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:1080px;">
+  <div class="chat-layout">
+    <div class="glass chat-sidebar">
+      <button id="btn-group" class="active">چت گروهی</button>
+      <hr style="border-color: var(--glass-border); margin: 10px 0;">
+      <p style="font-size:12px; color: var(--text-muted);">چت خصوصی</p>
+      <div id="contacts-list"></div>
+    </div>
+    <div class="glass chat-main">
+      <h3 id="chat-title" style="margin-top:0;">چت گروهی کلاس</h3>
+      <div class="chat-messages" id="messages"></div>
+      <div class="chat-input-row" id="input-row">
+        <input type="text" id="msg-input" placeholder="پیامت رو بنویس... (برای صحبت با ربات: /بات سوالت)">
+        <button class="btn btn-primary" id="send-btn">ارسال</button>
+        <button class="btn btn-ghost" id="img-btn" title="ارسال عکس">📷</button>
+        <button class="btn btn-ghost" id="voice-btn" title="پیام صوتی">🎙</button>
+        <input type="file" id="img-input" accept="image/*" style="display:none">
+      </div>
+      <p id="sending-note" style="font-size:12px; color:var(--text-muted); display:none;">در حال ارسال...</p>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  let currentUser = null;
+  let mode = 'group';
+  let activeContactId = null;
+  let pollTimer = null;
+
+  requirePageLogin('chat.html').then(async (user) => {
+    if (!user) return;
+    currentUser = user;
+    const contactsData = await api.getContacts();
+    renderContacts(contactsData.contacts);
+    startPolling();
+  });
+
+  function renderContacts(contacts) {
+    const el = document.getElementById('contacts-list');
+    el.innerHTML = contacts
+      .map((c) => `<button data-id="${c.id}" data-name="${c.display_name}">${c.display_name}</button>`)
+      .join('');
+    el.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => switchToPrivate(Number(btn.dataset.id), btn.dataset.name));
+    });
+  }
+
+  function switchToGroup() {
+    mode = 'group';
+    activeContactId = null;
+    document.getElementById('chat-title').textContent = 'چت گروهی کلاس';
+    document.getElementById('btn-group').classList.add('active');
+    document.querySelectorAll('#contacts-list button').forEach((b) => b.classList.remove('active'));
+    loadMessages();
+  }
+
+  function switchToPrivate(id, name) {
+    mode = 'private';
+    activeContactId = id;
+    document.getElementById('chat-title').textContent = `پی‌وی با ${name}`;
+    document.getElementById('btn-group').classList.remove('active');
+    document.querySelectorAll('#contacts-list button').forEach((b) => {
+      b.classList.toggle('active', Number(b.dataset.id) === id);
+    });
+    loadMessages();
+  }
+
+  document.getElementById('btn-group').addEventListener('click', switchToGroup);
+
+  async function loadMessages() {
+    try {
+      const data = mode === 'group' ? await api.getGroupMessages() : await api.getPrivateMessages(activeContactId);
+      renderMessages(data.messages);
+    } catch (e) {
+      // مخاطب هنوز انتخاب نشده یا خطای موقت — نادیده می‌گیریم
+    }
+  }
+
+  function renderMessages(messages) {
+    const el = document.getElementById('messages');
+    el.innerHTML = messages
+      .map((m) => {
+        const mine = Number(m.sender_id) === currentUser.id;
+        const mediaHtml =
+          m.media_type === 'image' && m.media_url
+            ? `<img src="${m.media_url}" style="max-width:240px;border-radius:10px;display:block;margin-bottom:4px;">`
+            : m.media_type === 'audio' && m.media_url
+            ? `<audio controls src="${m.media_url}" style="margin-bottom:4px;"></audio>`
+            : '';
+        return `<div class="msg ${mine ? 'mine' : 'theirs'}">
+          <div class="sender">${m.display_name}</div>
+          <div class="bubble">${mediaHtml}${m.content ? escapeHtml(m.content) : ''}</div>
+        </div>`;
+      })
+      .join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (mode === 'private' && !activeContactId) return;
+
+    await api.sendMessage({
+      chat_type: mode,
+      recipient_id: mode === 'private' ? activeContactId : undefined,
+      content: text,
+    });
+    input.value = '';
+    loadMessages();
+  }
+
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('msg-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  function startPolling() {
+    loadMessages();
+    pollTimer = setInterval(loadMessages, 3000);
+  }
+
+  function setSending(on) {
+    document.getElementById('sending-note').style.display = on ? 'block' : 'none';
+  }
+
+  // ===== ارسال عکس =====
+  document.getElementById('img-btn').addEventListener('click', () => {
+    if (mode === 'private' && !activeContactId) return;
+    document.getElementById('img-input').click();
+  });
+
+  document.getElementById('img-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSending(true);
+    try {
+      const uploadResult = await api.uploadFile(file);
+      await api.sendMessage({
+        chat_type: mode,
+        recipient_id: mode === 'private' ? activeContactId : undefined,
+        media_url: uploadResult.directLink,
+        media_type: 'image',
+      });
+      loadMessages();
+    } finally {
+      setSending(false);
+      e.target.value = '';
+    }
+  });
+
+  // ===== پیام صوتی =====
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+
+  document.getElementById('voice-btn').addEventListener('click', async () => {
+    if (mode === 'private' && !activeContactId) return;
+
+    if (isRecording) {
+      mediaRecorder.stop();
+      isRecording = false;
+      document.getElementById('voice-btn').textContent = '🎙';
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+
+      setSending(true);
+      try {
+        const uploadResult = await api.uploadFile(file);
+        await api.sendMessage({
+          chat_type: mode,
+          recipient_id: mode === 'private' ? activeContactId : undefined,
+          media_url: uploadResult.directLink,
+          media_type: 'audio',
+        });
+        loadMessages();
+      } finally {
+        setSending(false);
+      }
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('voice-btn').textContent = '⏹';
+  });
+</script>
+</body>
+</html>

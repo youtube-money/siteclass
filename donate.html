@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دونیت — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:420px;">
+  <h1>حمایت از کلاس 💛</h1>
+  <p style="color:var(--text-muted); font-size:14px;">
+    به‌جای لینک پرداخت (که کارمزد می‌گیره)، مستقیم به این شماره کارت واریز کن.
+  </p>
+
+  <div class="glass card" id="account-area"></div>
+
+  <div class="glass card admin-only" id="admin-box" style="display:none; margin-top:20px;">
+    <h3 style="margin-top:0;">تنظیم شماره حساب (ادمین)</h3>
+    <div class="field"><label>شماره کارت</label><input class="mono" id="acc-number" style="direction:ltr;" placeholder="6037-XXXX-XXXX-XXXX"></div>
+    <div class="field"><label>اسم صاحب حساب</label><input id="acc-name"></div>
+    <button class="btn btn-primary" id="save-btn">ذخیره</button>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('donate.html').then(async (user) => {
+    if (!user) return;
+    if (user.role === 'admin') document.getElementById('admin-box').style.display = 'block';
+    await load();
+  });
+
+  async function load() {
+    const data = await api.getDonateAccount();
+    document.getElementById('acc-number').value = data.account_number || '';
+    document.getElementById('acc-name').value = data.account_name || '';
+
+    document.getElementById('account-area').innerHTML = data.account_number
+      ? `<label>شمارهٔ کارت</label>
+         <div class="mono" id="card-number" style="font-size:18px; letter-spacing:2px; margin-bottom:6px;">${data.account_number}</div>
+         <p style="font-size:12px; color:var(--text-muted); margin:0;">به نام: ${data.account_name}</p>
+         <button class="btn btn-ghost" style="margin-top:12px;" onclick="copyCard()">کپی شماره کارت</button>`
+      : '<p style="color:var(--text-disabled)">هنوز شماره حسابی تنظیم نشده.</p>';
+  }
+
+  function copyCard() {
+    navigator.clipboard.writeText(document.getElementById('card-number').textContent.trim());
+    event.target.textContent = 'کپی شد ✓';
+    setTimeout(() => event.target.textContent = 'کپی شماره کارت', 1500);
+  }
+
+  document.getElementById('save-btn')?.addEventListener('click', async () => {
+    const account_number = document.getElementById('acc-number').value.trim();
+    const account_name = document.getElementById('acc-name').value.trim();
+    if (!account_number || !account_name) return;
+    await api.setDonateAccount(account_number, account_name);
+    await load();
+  });
+</script>
+</body>
+</html>

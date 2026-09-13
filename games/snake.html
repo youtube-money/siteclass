@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بازی مار</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #060714; color: #f8fafc; font-family: sans-serif; gap: 14px;
+  }
+  h1 { margin: 0; font-size: 20px; }
+  #score { color: #94a3b8; font-size: 14px; }
+  canvas { background: #0b0d22; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; touch-action: none; }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(6,7,20,0.85); display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  #overlay h2 { margin: 0; }
+  button {
+    padding: 10px 24px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4); color: white; font-weight: bold; font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<h1>🐍 بازی مار</h1>
+<div id="score">امتیاز: 0</div>
+<canvas id="board" width="360" height="360"></canvas>
+<p style="color:#64748b; font-size:12px;">با کلیدهای جهت‌دار یا سوایپ حرکت کن</p>
+
+<div id="overlay">
+  <h2>باختی! 😅</h2>
+  <div id="final-score" style="color:#94a3b8;"></div>
+  <button onclick="startGame()">دوباره امتحان کن</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const gridSize = 18;
+  const cols = canvas.width / gridSize;
+
+  let snake, dir, food, score, speed, gameLoop;
+
+  function startGame() {
+    snake = [{ x: 8, y: 8 }];
+    dir = { x: 1, y: 0 };
+    score = 0;
+    speed = 140;
+    placeFood();
+    document.getElementById('score').textContent = 'امتیاز: 0';
+    document.getElementById('overlay').style.display = 'none';
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(tick, speed);
+  }
+
+  function placeFood() {
+    food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * cols) };
+  }
+
+  function tick() {
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= cols || snake.some(s => s.x === head.x && s.y === head.y)) {
+      endGame();
+      return;
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      document.getElementById('score').textContent = 'امتیاز: ' + score;
+      placeFood();
+      if (speed > 60) {
+        speed -= 4;
+        clearInterval(gameLoop);
+        gameLoop = setInterval(tick, speed);
+      }
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0b0d22';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+
+    snake.forEach((s, i) => {
+      ctx.fillStyle = i === 0 ? '#22d3ee' : '#8b5cf6';
+      ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize - 2, gridSize - 2);
+    });
+  }
+
+  function endGame() {
+    clearInterval(gameLoop);
+    document.getElementById('final-score').textContent = 'امتیازت: ' + score;
+    document.getElementById('overlay').style.display = 'flex';
+    submitScore('snake', score);
+  }
+
+  function submitScore(gameKey, scoreValue) {
+    fetch('/api/game-score-submit.php', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ game_key: gameKey, score: scoreValue }),
+    }).catch(() => {}); // اگه لاگین نبود یا خطایی شد، بازی رو مختل نکن
+  }
+
+  document.addEventListener('keydown', (e) => {
+    const map = {
+      ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+      ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+      w: { x: 0, y: -1 }, s: { x: 0, y: 1 }, a: { x: -1, y: 0 }, d: { x: 1, y: 0 },
+    };
+    const next = map[e.key];
+    if (next && (next.x !== -dir.x || next.y !== -dir.y)) dir = next;
+  });
+
+  // کنترل لمسی برای موبایل
+  let touchStartX = 0, touchStartY = 0;
+  canvas.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  });
+  canvas.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      dir = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+    } else {
+      dir = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+    }
+  });
+
+  startGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حساب کاربری — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .avatar-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .avatar-opt {
+    width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; background: rgba(255,255,255,0.04); border: 2px solid transparent; cursor: pointer;
+  }
+  .avatar-opt.selected { border-color: var(--violet-400); }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:500px;">
+  <h1>حساب کاربری</h1>
+  <p style="color:var(--text-muted); font-size:14px;">پروفایلت رو شخصی‌سازی کن.</p>
+
+  <div class="glass card">
+    <label>آواتار</label>
+    <div class="avatar-grid" id="avatar-grid">
+      <div class="avatar-opt" data-emoji="🦊">🦊</div>
+      <div class="avatar-opt" data-emoji="🐺">🐺</div>
+      <div class="avatar-opt" data-emoji="🦁">🦁</div>
+      <div class="avatar-opt" data-emoji="🐼">🐼</div>
+      <div class="avatar-opt" data-emoji="🐸">🐸</div>
+      <div class="avatar-opt" data-emoji="🤖">🤖</div>
+      <div class="avatar-opt" data-emoji="🦉">🦉</div>
+      <div class="avatar-opt" data-emoji="🐙">🐙</div>
+    </div>
+
+    <div class="field" style="margin-top:18px;"><label>نام نمایشی</label><input id="display-name"></div>
+    <div class="field"><label>بیو کوتاه</label><input id="bio" placeholder="یه جملهٔ کوتاه دربارهٔ خودت"></div>
+    <div class="field" id="theme-field" style="display:none;">
+      <label>رنگ تم پروفایل <span style="font-size:11px; color:var(--violet-400);">(ویژه)</span></label>
+      <input type="color" id="theme-color" style="height:40px; padding:4px;">
+    </div>
+    <p class="error-text" id="error-msg" style="display:none;"></p>
+    <button class="btn btn-primary" id="save-btn">ذخیره</button>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  let selectedEmoji = '🙂';
+
+  requirePageLogin('account.html').then(async (user) => {
+    if (!user) return;
+    if (user.role === 'special' || user.role === 'admin') {
+      document.getElementById('theme-field').style.display = 'block';
+    }
+    const data = await api.getProfile();
+    const p = data.user;
+    document.getElementById('display-name').value = p.display_name;
+    document.getElementById('bio').value = p.bio || '';
+    document.getElementById('theme-color').value = p.theme_color || '#8b5cf6';
+    selectEmoji(p.avatar_emoji || '🙂');
+  });
+
+  function selectEmoji(emoji) {
+    selectedEmoji = emoji;
+    document.querySelectorAll('.avatar-opt').forEach((opt) => {
+      opt.classList.toggle('selected', opt.dataset.emoji === emoji);
+    });
+  }
+
+  document.querySelectorAll('.avatar-opt').forEach((opt) => {
+    opt.addEventListener('click', () => selectEmoji(opt.dataset.emoji));
+  });
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const errorEl = document.getElementById('error-msg');
+    errorEl.style.display = 'none';
+    try {
+      await api.updateProfile({
+        display_name: document.getElementById('display-name').value.trim(),
+        avatar_emoji: selectedEmoji,
+        bio: document.getElementById('bio').value.trim(),
+        theme_color: document.getElementById('theme-color').value,
+      });
+      location.reload();
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>

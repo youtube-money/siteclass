@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تکلیف و پروژه — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+
+<!-- ادیتور کد (CodeMirror 5) — بدون نیاز به build، فقط CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5/theme/dracula.min.css">
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/python/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/javascript/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/xml/xml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/css/css.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5/mode/clike/clike.min.js"></script>
+
+<style>
+  .subject-block { margin-bottom: 24px; }
+  .subject-block h2 { font-size: 18px; color: var(--emerald-400); }
+  .project-card { padding: 16px 18px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 6px; margin: 12px 0; }
+  .tabs button.active { color: var(--violet-400); }
+  .ptab-panel { padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; }
+  .ai-box { margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid var(--glass-border); }
+  .ai-reply { font-size: 13px; white-space: pre-wrap; margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+
+  .code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .code-toolbar select { max-width: 160px; }
+  .code-toolbar .save-status { font-size: 11px; color: var(--text-disabled); white-space: nowrap; }
+
+  /* استایل ادیتور کد هماهنگ با تم شیشه‌ای سایت */
+  .CodeMirror {
+    height: 320px;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    direction: ltr;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:760px;">
+  <h1>تکلیف و پروژه</h1>
+  <p style="color:var(--text-muted); font-size:14px;">
+    برای هر پروژه، یا کلید API شخصی خودت رو بذار (از
+    <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--violet-400)">aistudio.google.com/apikey</a>)،
+    یا اگه نمی‌خوای کلید بسازی، مستقیم کدت رو بنویس — خودکار ذخیره می‌شه.
+  </p>
+
+  <div class="glass" id="admin-form" style="display:none; padding:20px; margin-bottom:24px;">
+    <h3 style="margin-top:0;">افزودن پروژه/تکلیف جدید (ادمین)</h3>
+    <div class="field"><input type="text" id="p-subject" placeholder="درس (مثلا: پایتون)"></div>
+    <div class="field"><input type="text" id="p-title" placeholder="عنوان پروژه/تکلیف"></div>
+    <div class="field"><textarea id="p-desc" placeholder="توضیحات (اختیاری)"></textarea></div>
+    <button class="btn btn-primary" id="p-add-btn">افزودن</button>
+  </div>
+
+  <div id="projects-list"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  const codeEditors = {}; // projectId -> CodeMirror instance
+  const saveTimers = {};  // projectId -> debounce timer
+
+  const modeMap = {
+    python: 'python',
+    javascript: 'javascript',
+    html: 'htmlmixed',
+    css: 'css',
+    cpp: 'text/x-c++src',
+    java: 'text/x-java',
+  };
+
+  requirePageLogin('projects.html').then((user) => {
+    if (!user) return;
+    if (user.role === 'admin') document.getElementById('admin-form').style.display = 'block';
+    loadProjects();
+  });
+
+  async function loadProjects() {
+    const data = await api.getProjects();
+    const bySubject = {};
+    data.projects.forEach((p) => (bySubject[p.subject] = bySubject[p.subject] || []).push(p));
+
+    const container = document.getElementById('projects-list');
+    if (data.projects.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز پروژه/تکلیفی ثبت نشده.</p>';
+      return;
+    }
+
+    container.innerHTML = Object.entries(bySubject).map(([subject, items]) => `
+      <div class="subject-block">
+        <h2>${subject}</h2>
+        ${items.map((p) => `
+          <div class="glass project-card">
+            <h3 style="margin:0;">${p.title}</h3>
+            ${p.description ? `<p style="margin:4px 0;">${p.description}</p>` : ''}
+            <p style="font-size:12px; color:var(--text-disabled);">افزوده‌شده توسط ${p.creator_name}</p>
+
+            <div class="tabs">
+              <button class="btn btn-ghost active" data-ptab="key-${p.id}" onclick="switchTab(${p.id}, 'key')">🔑 کلید API</button>
+              <button class="btn btn-ghost" data-ptab="code-${p.id}" onclick="switchTab(${p.id}, 'code')">💻 نوشتن کد</button>
+            </div>
+
+            <div class="ptab-panel" id="panel-key-${p.id}"></div>
+            <div class="ptab-panel" id="panel-code-${p.id}" style="display:none;">
+              <div class="code-toolbar">
+                <select id="lang-select-${p.id}" onchange="changeLanguage(${p.id})">
+                  <option value="python">Python</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="html">HTML</option>
+                  <option value="css">CSS</option>
+                  <option value="cpp">++C</option>
+                  <option value="java">Java</option>
+                </select>
+                <span class="save-status" id="save-status-${p.id}"></span>
+              </div>
+              <textarea id="code-input-${p.id}"></textarea>
+              <button class="btn btn-ghost" style="margin-top:8px;" onclick="askCodeHelp(${p.id})">🤖 کمک از AI</button>
+              <div class="ai-reply" id="code-ai-reply-${p.id}" style="display:none;"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    data.projects.forEach((p) => {
+      loadKeyBox(p.id);
+      initCodeEditor(p.id);
+    });
+  }
+
+  function initCodeEditor(projectId) {
+    const textarea = document.getElementById(`code-input-${projectId}`);
+    const cm = CodeMirror.fromTextArea(textarea, {
+      mode: 'python',
+      theme: 'dracula',
+      lineNumbers: true,
+      indentUnit: 4,
+      tabSize: 4,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+    });
+    codeEditors[projectId] = cm;
+
+    // بارگذاری کد ذخیره‌شدهٔ قبلی
+    api.getProjectCode(projectId).then((data) => {
+      if (data.code) cm.setValue(data.code);
+      document.getElementById(`lang-select-${projectId}`).value = data.language;
+      cm.setOption('mode', modeMap[data.language] || 'python');
+    });
+
+    // ذخیرهٔ خودکار با کمی تأخیر بعد از توقف تایپ (debounce)
+    cm.on('change', () => {
+      clearTimeout(saveTimers[projectId]);
+      document.getElementById(`save-status-${projectId}`).textContent = '...';
+      saveTimers[projectId] = setTimeout(() => saveCode(projectId), 1200);
+    });
+  }
+
+  async function saveCode(projectId) {
+    const cm = codeEditors[projectId];
+    const language = document.getElementById(`lang-select-${projectId}`).value;
+    await api.saveProjectCode(projectId, cm.getValue(), language);
+    const statusEl = document.getElementById(`save-status-${projectId}`);
+    statusEl.textContent = 'ذخیره شد ✓';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+  }
+
+  function changeLanguage(projectId) {
+    const language = document.getElementById(`lang-select-${projectId}`).value;
+    codeEditors[projectId].setOption('mode', modeMap[language] || 'python');
+    saveCode(projectId);
+  }
+
+  function switchTab(projectId, tab) {
+    document.getElementById(`panel-key-${projectId}`).style.display = tab === 'key' ? 'block' : 'none';
+    document.getElementById(`panel-code-${projectId}`).style.display = tab === 'code' ? 'block' : 'none';
+    const card = document.getElementById(`panel-key-${projectId}`).closest('.project-card');
+    card.querySelectorAll('[data-ptab]').forEach((b) => b.classList.remove('active'));
+    card.querySelector(`[data-ptab="${tab}-${projectId}"]`).classList.add('active');
+    // CodeMirror وقتی توی یه پنل مخفی ساخته بشه، اندازه‌گیریش خرابه — با نمایان‌شدن باید refresh بشه
+    if (tab === 'code') setTimeout(() => codeEditors[projectId]?.refresh(), 0);
+  }
+
+  async function loadKeyBox(projectId) {
+    const status = await api.getMyApiKeyStatus(projectId);
+    const box = document.getElementById(`panel-key-${projectId}`);
+    if (status.hasKey) {
+      box.innerHTML = `
+        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 6px;">کلید API شخصی‌ات:</p>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="mono">••••••••${status.lastFourChars}</span>
+          <button class="btn btn-ghost" style="font-size:12px; padding:4px 10px;" onclick="deleteKey(${projectId})">حذف</button>
+        </div>
+        <div class="ai-box">
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 6px;">دستیارت رو امتحان کن (حافظه‌اش بین همهٔ پروژه‌هات مشترکه):</p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="ai-msg-${projectId}" placeholder="سوالت رو بپرس...">
+            <button class="btn btn-ghost" onclick="askProjectAI(${projectId})">پرسیدن</button>
+          </div>
+          <div class="ai-reply" id="ai-reply-${projectId}" style="display:none;"></div>
+        </div>
+      `;
+    } else {
+      box.innerHTML = `
+        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 6px;">کلید API جمینای شخصی‌ات برای این پروژه:</p>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="key-input-${projectId}" placeholder="کلیدت رو این‌جا پیست کن" style="flex:1; font-family:monospace; direction:ltr;">
+          <button class="btn btn-ghost" style="font-size:12px;" onclick="saveKey(${projectId})">ذخیره</button>
+        </div>`;
+    }
+  }
+
+  async function saveKey(projectId) {
+    const input = document.getElementById(`key-input-${projectId}`);
+    if (!input.value.trim()) return;
+    await api.saveMyApiKey(projectId, input.value.trim());
+    loadKeyBox(projectId);
+  }
+
+  async function deleteKey(projectId) {
+    await api.deleteMyApiKey(projectId);
+    loadKeyBox(projectId);
+  }
+
+  async function askProjectAI(projectId) {
+    const input = document.getElementById(`ai-msg-${projectId}`);
+    const message = input.value.trim();
+    if (!message) return;
+    const replyBox = document.getElementById(`ai-reply-${projectId}`);
+    replyBox.style.display = 'block';
+    replyBox.textContent = 'در حال فکر کردن...';
+    try {
+      const data = await api.askProjectAI(projectId, message);
+      replyBox.textContent = data.reply;
+      input.value = '';
+    } catch (e) {
+      replyBox.textContent = 'خطا: ' + e.message;
+    }
+  }
+
+  async function askCodeHelp(projectId) {
+    const code = codeEditors[projectId].getValue();
+    const replyBox = document.getElementById(`code-ai-reply-${projectId}`);
+    replyBox.style.display = 'block';
+    replyBox.textContent = 'در حال بررسی کد...';
+    try {
+      const data = await api.askCodeHelp(code, '');
+      replyBox.textContent = data.reply;
+    } catch (e) {
+      replyBox.textContent = 'خطا: ' + e.message;
+    }
+  }
+
+  document.getElementById('p-add-btn')?.addEventListener('click', async () => {
+    const subject = document.getElementById('p-subject').value.trim();
+    const title = document.getElementById('p-title').value.trim();
+    const description = document.getElementById('p-desc').value.trim();
+    if (!subject || !title) return;
+    await api.createProject({ subject, title, description });
+    document.getElementById('p-subject').value = '';
+    document.getElementById('p-title').value = '';
+    document.getElementById('p-desc').value = '';
+    loadProjects();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دروس — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .subject-card { padding: 18px; cursor: pointer; }
+  .content-item { padding: 10px 0; border-bottom: 1px solid var(--glass-border); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:720px;">
+  <h1>دروس</h1>
+  <p style="color:var(--text-muted); font-size:14px;">ادمین درس‌ها رو تعریف می‌کنه؛ بچه‌ها زیر هر درس محتوا اضافه می‌کنن.</p>
+
+  <div class="glass card" id="admin-add" style="display:none;">
+    <div class="row">
+      <div class="field"><input id="new-subject" placeholder="اسم درس جدید"></div>
+      <button class="btn btn-primary" id="add-subject-btn" style="align-self:flex-end; height:44px;">افزودن درس</button>
+    </div>
+  </div>
+
+  <div class="grid" id="subjects-grid"></div>
+
+  <div id="detail-area" style="margin-top:24px; display:none;">
+    <h2 id="detail-title"></h2>
+    <div class="glass card">
+      <div class="field"><textarea id="new-content" rows="3" placeholder="محتوات رو بنویس..."></textarea></div>
+      <button class="btn btn-ghost" id="add-content-btn">افزودن</button>
+    </div>
+    <div id="content-list" style="margin-top:14px;"></div>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  let activeSubjectId = null;
+
+  requirePageLogin('lessons.html').then(async (user) => {
+    if (!user) return;
+    if (user.role === 'admin') document.getElementById('admin-add').style.display = 'block';
+    loadSubjects();
+  });
+
+  async function loadSubjects() {
+    const data = await api.getLessonSubjects();
+    const grid = document.getElementById('subjects-grid');
+    if (data.subjects.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-muted)">هنوز درسی اضافه نشده.</p>';
+      return;
+    }
+    grid.innerHTML = data.subjects.map((s) => `
+      <div class="glass subject-card" data-id="${s.id}" data-name="${s.name}">
+        <b>${s.name}</b>
+        <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">${s.content_count} محتوا</p>
+      </div>
+    `).join('');
+
+    grid.querySelectorAll('.subject-card').forEach((card) => {
+      card.addEventListener('click', () => openSubject(Number(card.dataset.id), card.dataset.name));
+    });
+  }
+
+  async function openSubject(id, name) {
+    activeSubjectId = id;
+    document.getElementById('detail-area').style.display = 'block';
+    document.getElementById('detail-title').textContent = name;
+    await loadContents();
+  }
+
+  async function loadContents() {
+    const data = await api.getLessonContents(activeSubjectId);
+    const container = document.getElementById('content-list');
+    container.innerHTML = data.contents.map((c) => `
+      <div class="content-item"><b>${c.display_name}:</b> ${c.content ? escapeHtml(c.content) : ''}
+        ${c.file_link ? `<a href="${c.file_link}" target="_blank">📎 فایل</a>` : ''}
+      </div>
+    `).join('') || '<p style="color:var(--text-disabled); font-size:13px;">هنوز محتوایی اضافه نشده.</p>';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('add-subject-btn')?.addEventListener('click', async () => {
+    const name = document.getElementById('new-subject').value.trim();
+    if (!name) return;
+    await api.createLessonSubject(name);
+    document.getElementById('new-subject').value = '';
+    loadSubjects();
+  });
+
+  document.getElementById('add-content-btn').addEventListener('click', async () => {
+    const content = document.getElementById('new-content').value.trim();
+    if (!content || !activeSubjectId) return;
+    await api.addLessonContent({ subject_id: activeSubjectId, content });
+    document.getElementById('new-content').value = '';
+    loadContents();
+    loadSubjects();
+  });
+</script>
+</body>
+</html>

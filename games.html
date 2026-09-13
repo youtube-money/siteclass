@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سرگرمی — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .game-card { padding: 16px; text-decoration: none; display: block; }
+  .game-card h3 { margin: 0 0 4px; }
+  .game-card p { margin: 0; font-size: 12px; color: var(--text-muted); }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin: 32px 0 16px; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main style="max-width:720px;">
+  <h1>بخش سرگرمی</h1>
+
+  <h2>بازی‌های آماده</h2>
+  <div class="grid">
+    <a href="games/snake.html" target="_blank" class="glass game-card"><h3>🐍 مار</h3><p>کلاسیک با کلیدهای جهت‌دار</p></a>
+    <a href="games/tetris.html" target="_blank" class="glass game-card"><h3>🧱 تتریس</h3><p>قطعات رو بچین و خط پاک کن</p></a>
+    <a href="games/number-guess.html" target="_blank" class="glass game-card"><h3>🎯 حدس عدد</h3><p>عددی بین ۱ تا ۱۰۰</p></a>
+  </div>
+
+  <div class="section-header">
+    <h2 style="margin:0;">بازی‌های ساختهٔ بچه‌ها</h2>
+    <a href="games-submit.html"><button class="btn btn-primary">+ بازی خودت رو اضافه کن</button></a>
+  </div>
+  <div class="grid" id="student-games-list"></div>
+
+  <h2 style="margin-top:32px;">می‌خوای با AI بازی خودتو بسازی؟</h2>
+  <div class="glass" style="padding:16px 20px;">
+    <p style="font-size:13px; color:var(--text-secondary); margin-top:0;">این پرامپت رو کپی کن و به هر ابزار AI بده تا برات بازی با کیفیت خوب بسازه:</p>
+    <pre id="ai-game-prompt" style="white-space:pre-wrap; font-family:'JetBrains Mono',monospace; font-size:11.5px; direction:ltr; text-align:left; margin:0; color:var(--text-secondary);">Create a single-file HTML/CSS/JS browser game (no external libraries).
+
+Visual requirements to match our class site's quality bar:
+- High-resolution canvas rendering (crisp on retina displays, no blurry pixels)
+- Vibrant neon color palette (violet #8b5cf6, cyan #06b6d4, emerald #10b981 — pick 2-3, not all)
+- Smooth animations (60fps, subtle glow/particle effects on key actions like scoring)
+- Clean modern UI: score display, game-over screen with restart button
+- Fully self-contained in one .html file, mobile-friendly (touch controls if relevant)
+
+IMPORTANT — this game will run inside a sandboxed iframe with NO access to
+cookies, localStorage, sessionStorage, or the network (no fetch/XHR will work
+and will silently fail). Do NOT use any of those.
+
+To report the final score to the parent site when the game ends, call exactly this
+(replace SCORE_VALUE with the numeric final score):
+  window.parent.postMessage({ type: 'game-score', score: SCORE_VALUE }, '*');
+
+Call it once, right when the game-over screen appears.
+
+Output only the complete HTML file.</pre>
+    <button class="btn btn-ghost" style="margin-top:10px;" onclick="copyGamePrompt()">کپی پرامپت</button>
+  </div>
+
+  <h2 style="margin-top:32px;">🏆 لیدربورد کلی</h2>
+  <div class="glass" style="padding:16px 20px;">
+    <table style="width:100%; font-size:13px;">
+      <thead><tr><th style="text-align:right; padding-bottom:8px;">بازیکن</th><th style="text-align:right;">بازی</th><th style="text-align:right;">امتیاز</th></tr></thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('games.html').then((user) => { if (user) { loadGames(); loadLeaderboard(); } });
+
+  async function loadLeaderboard() {
+    const data = await api.getLeaderboard();
+    document.getElementById('leaderboard-body').innerHTML = data.leaderboard
+      .map((r) => `<tr><td style="padding:6px 0;">${r.display_name}</td><td>${r.game_key}</td><td>${r.score}</td></tr>`)
+      .join('') || '<tr><td colspan="3" style="color:var(--text-disabled); padding:10px 0;">هنوز امتیازی ثبت نشده.</td></tr>';
+  }
+
+  function copyGamePrompt() {
+    navigator.clipboard.writeText(document.getElementById('ai-game-prompt').textContent);
+    event.target.textContent = 'کپی شد ✓';
+    setTimeout(() => event.target.textContent = 'کپی پرامپت', 1500);
+  }
+
+  async function loadGames() {
+    const data = await api.getStudentGames();
+    const container = document.getElementById('student-games-list');
+    if (data.games.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز بازی‌ای اضافه نشده.</p>';
+      return;
+    }
+    container.innerHTML = data.games.map((g) => `
+      <a href="games-play.html?id=${g.id}" class="glass game-card">
+        <h3>${g.title}</h3>
+        ${g.description ? `<p>${g.description}</p>` : ''}
+        <p style="margin-top:4px;">ساختهٔ ${g.display_name}</p>
+      </a>
+    `).join('');
+  }
+</script>
+</body>
+</html>

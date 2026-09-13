@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تتریس</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #060714; color: #f8fafc; font-family: sans-serif; gap: 10px;
+  }
+  h1 { margin: 0; font-size: 20px; }
+  #info { color: #94a3b8; font-size: 13px; display: flex; gap: 16px; }
+  canvas { background: #0b0d22; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(6,7,20,0.85); display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  button {
+    padding: 10px 24px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4); color: white; font-weight: bold; font-size: 15px;
+  }
+  #controls { display: flex; gap: 8px; margin-top: 4px; }
+  #controls button { background: rgba(255,255,255,0.08); padding: 10px 16px; font-size: 18px; }
+</style>
+</head>
+<body>
+<h1>🧱 تتریس</h1>
+<div id="info"><span id="score">امتیاز: 0</span><span id="lines">خط‌ها: 0</span></div>
+<canvas id="board" width="240" height="480"></canvas>
+<div id="controls">
+  <button onclick="move(-1)">⬅️</button>
+  <button onclick="rotatePiece()">🔄</button>
+  <button onclick="move(1)">➡️</button>
+  <button onclick="drop()">⬇️</button>
+</div>
+
+<div id="overlay">
+  <h2>باختی! 😅</h2>
+  <div id="final-score" style="color:#94a3b8;"></div>
+  <button onclick="startGame()">دوباره امتحان کن</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const cols = 12, rows = 24, cell = 20;
+
+  const shapes = {
+    I: [[1,1,1,1]],
+    O: [[1,1],[1,1]],
+    T: [[0,1,0],[1,1,1]],
+    S: [[0,1,1],[1,1,0]],
+    Z: [[1,1,0],[0,1,1]],
+    J: [[1,0,0],[1,1,1]],
+    L: [[0,0,1],[1,1,1]],
+  };
+  const colors = { I: '#22d3ee', O: '#fbbf24', T: '#8b5cf6', S: '#34d399', Z: '#f43f5e', J: '#38bdf8', L: '#fb7185' };
+
+  let grid, current, pos, score, lines, dropInterval, gameOver;
+
+  function startGame() {
+    grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+    score = 0; lines = 0; gameOver = false;
+    document.getElementById('score').textContent = 'امتیاز: 0';
+    document.getElementById('lines').textContent = 'خط‌ها: 0';
+    document.getElementById('overlay').style.display = 'none';
+    spawnPiece();
+    if (dropInterval) clearInterval(dropInterval);
+    dropInterval = setInterval(drop, 700);
+    draw();
+  }
+
+  function spawnPiece() {
+    const keys = Object.keys(shapes);
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    current = { shape: shapes[key], color: colors[key] };
+    pos = { x: Math.floor(cols / 2) - Math.ceil(current.shape[0].length / 2), y: 0 };
+    if (collides(0, 0, current.shape)) endGame();
+  }
+
+  function collides(dx, dy, shape) {
+    for (let y = 0; y < shape.length; y++) {
+      for (let x = 0; x < shape[y].length; x++) {
+        if (!shape[y][x]) continue;
+        const nx = pos.x + x + dx, ny = pos.y + y + dy;
+        if (nx < 0 || nx >= cols || ny >= rows) return true;
+        if (ny >= 0 && grid[ny][nx]) return true;
+      }
+    }
+    return false;
+  }
+
+  function move(dir) {
+    if (gameOver) return;
+    if (!collides(dir, 0, current.shape)) { pos.x += dir; draw(); }
+  }
+
+  function rotatePiece() {
+    if (gameOver) return;
+    const rotated = current.shape[0].map((_, i) => current.shape.map(row => row[i]).reverse());
+    if (!collides(0, 0, rotated)) { current.shape = rotated; draw(); }
+  }
+
+  function drop() {
+    if (gameOver) return;
+    if (!collides(0, 1, current.shape)) {
+      pos.y++;
+    } else {
+      lockPiece();
+      clearLines();
+      spawnPiece();
+    }
+    draw();
+  }
+
+  function lockPiece() {
+    current.shape.forEach((row, y) => row.forEach((v, x) => {
+      if (v && pos.y + y >= 0) grid[pos.y + y][pos.x + x] = current.color;
+    }));
+  }
+
+  function clearLines() {
+    let cleared = 0;
+    grid = grid.filter(row => {
+      if (row.every(c => c)) { cleared++; return false; }
+      return true;
+    });
+    while (grid.length < rows) grid.unshift(Array(cols).fill(null));
+    if (cleared) {
+      lines += cleared;
+      score += cleared * 100;
+      document.getElementById('score').textContent = 'امتیاز: ' + score;
+      document.getElementById('lines').textContent = 'خط‌ها: ' + lines;
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0b0d22';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    grid.forEach((row, y) => row.forEach((c, x) => {
+      if (c) { ctx.fillStyle = c; ctx.fillRect(x * cell, y * cell, cell - 1, cell - 1); }
+    }));
+
+    if (current) {
+      ctx.fillStyle = current.color;
+      current.shape.forEach((row, y) => row.forEach((v, x) => {
+        if (v) ctx.fillRect((pos.x + x) * cell, (pos.y + y) * cell, cell - 1, cell - 1);
+      }));
+    }
+  }
+
+  function endGame() {
+    gameOver = true;
+    clearInterval(dropInterval);
+    document.getElementById('final-score').textContent = 'امتیازت: ' + score;
+    document.getElementById('overlay').style.display = 'flex';
+    submitScore('tetris', score);
+  }
+
+  function submitScore(gameKey, scoreValue) {
+    fetch('/api/game-score-submit.php', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ game_key: gameKey, score: scoreValue }),
+    }).catch(() => {});
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') move(-1);
+    if (e.key === 'ArrowRight') move(1);
+    if (e.key === 'ArrowDown') drop();
+    if (e.key === 'ArrowUp') rotatePiece();
+  });
+
+  startGame();
+</script>
+</body>
+</html>

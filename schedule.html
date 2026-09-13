@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>برنامهٔ کلاسی — سایت کلاس</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .day-block { margin-bottom: 20px; }
+  .day-block h3 { font-size: 16px; margin: 0 0 10px; color: var(--cyan-400); }
+  .day-block ul { margin: 0; padding-inline-start: 20px; }
+  .day-block li { margin-bottom: 6px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<main>
+  <h1>برنامهٔ کلاسی</h1>
+
+  <div class="glass" id="admin-form" style="padding:20px; margin-bottom:16px; display:none;">
+    <h3 style="margin-top:0;">افزودن به برنامه (ادمین)</h3>
+    <div class="field"><label>روز هفته</label><input type="text" id="day_of_week" placeholder="مثلا: شنبه"></div>
+    <div class="field"><label>درس</label><input type="text" id="subject"></div>
+    <div class="field"><label>ساعت (اختیاری)</label><input type="text" id="time_slot"></div>
+    <div class="field"><label>توضیح (اختیاری)</label><input type="text" id="note"></div>
+    <button class="btn btn-primary" id="add-btn">افزودن</button>
+  </div>
+
+  <div class="glass" id="settings-form" style="padding:20px; margin-bottom:24px; display:none;">
+    <h3 style="margin-top:0;">تنظیمات برنامهٔ کلاسی (ادمین)</h3>
+    <div class="row">
+      <div class="field"><label>تعداد درس در هر روز</label><input type="number" id="lessons-per-day" min="1" max="12"></div>
+      <button class="btn btn-ghost" id="save-settings-btn" style="align-self:flex-end; height:44px;">ذخیره</button>
+    </div>
+  </div>
+
+  <div id="schedule-list"></div>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script>
+  requirePageLogin('schedule.html').then(async (user) => {
+    if (!user) return;
+    if (user.role === 'admin') {
+      document.getElementById('admin-form').style.display = 'block';
+      document.getElementById('settings-form').style.display = 'block';
+      const settings = await api.getScheduleSettings();
+      document.getElementById('lessons-per-day').value = settings.lessons_per_day;
+    }
+    loadSchedule();
+  });
+
+  document.getElementById('save-settings-btn')?.addEventListener('click', async () => {
+    const value = Number(document.getElementById('lessons-per-day').value);
+    if (!value) return;
+    await api.setScheduleSettings(value);
+  });
+
+  async function loadSchedule() {
+    const data = await api.getSchedule();
+    const days = ['شنبه', 'یک‌شنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه'];
+    const container = document.getElementById('schedule-list');
+
+    if (data.schedule.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted)">هنوز برنامه‌ای ثبت نشده.</p>';
+      return;
+    }
+
+    container.innerHTML = days
+      .map((day) => {
+        const items = data.schedule.filter((i) => i.day_of_week === day);
+        if (items.length === 0) return '';
+        const itemsHtml = items
+          .map((i) => `<li>${i.time_slot ? i.time_slot + ' — ' : ''}${i.subject}${i.note ? ' (' + i.note + ')' : ''}</li>`)
+          .join('');
+        return `<div class="glass day-block" style="padding:16px 20px;"><h3>${day}</h3><ul>${itemsHtml}</ul></div>`;
+      })
+      .join('');
+  }
+
+  document.getElementById('add-btn')?.addEventListener('click', async () => {
+    const day_of_week = document.getElementById('day_of_week').value.trim();
+    const subject = document.getElementById('subject').value.trim();
+    const time_slot = document.getElementById('time_slot').value.trim();
+    const note = document.getElementById('note').value.trim();
+    if (!day_of_week || !subject) return;
+
+    await api.addSchedule({ day_of_week, subject, time_slot, note });
+    document.getElementById('day_of_week').value = '';
+    document.getElementById('subject').value = '';
+    document.getElementById('time_slot').value = '';
+    document.getElementById('note').value = '';
+    loadSchedule();
+  });
+</script>
+</body>
+</html>
