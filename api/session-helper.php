@@ -46,8 +46,13 @@ function startSecureSession(): void {
         }
     }
 
-    $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    // IMPORTANT: decide Secure from the actual PHP HTTPS flag only.
+    // Some cPanel/proxy layers send X-Forwarded-Proto=https even when the
+    // browser is visiting the site over plain HTTP. In that situation a Secure
+    // cookie is accepted by the browser but is NOT sent back over HTTP, which
+    // produces exactly: login succeeds -> dashboard opens -> /api/me.php sees
+    // no session -> redirect to login.
+    $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
 
     ini_set('session.use_cookies', '1');
     ini_set('session.use_only_cookies', '1');
