@@ -5,142 +5,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>بازی مار</title>
 <style>
-  body {
-    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: #060714; color: #f8fafc; font-family: sans-serif; gap: 14px;
-  }
-  h1 { margin: 0; font-size: 20px; }
-  #score { color: #94a3b8; font-size: 14px; }
-  canvas { background: #0b0d22; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; touch-action: none; }
-  #overlay {
-    position: fixed; inset: 0; background: rgba(6,7,20,0.85); display: none;
-    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
-  }
-  #overlay h2 { margin: 0; }
-  button {
-    padding: 10px 24px; border-radius: 12px; border: none; cursor: pointer;
-    background: linear-gradient(135deg, #8b5cf6, #06b6d4); color: white; font-weight: bold; font-size: 15px;
-  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;padding:24px 14px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 15%,#18203b 0,#080b18 48%,#04050d 100%);color:#f8fafc;font-family:Vazirmatn,sans-serif}
+  .wrap{width:min(760px,100%);display:flex;flex-direction:column;align-items:center;gap:14px}
+  .top{width:min(620px,100%);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.055);backdrop-filter:blur(16px);box-shadow:0 18px 60px rgba(0,0,0,.28)}
+  .title{display:flex;align-items:center;gap:10px;font-size:21px;font-weight:800}.title span{font-size:30px}
+  .score{font-size:18px;font-weight:800;color:#67e8f9}.score small{display:block;color:#94a3b8;font-size:11px;font-weight:500}
+  .board-shell{position:relative;width:min(620px,92vw);aspect-ratio:1;border-radius:26px;padding:10px;background:linear-gradient(145deg,rgba(34,211,238,.35),rgba(139,92,246,.22));box-shadow:0 0 55px rgba(34,211,238,.12),0 24px 80px rgba(0,0,0,.4)}
+  canvas{display:block;width:100%;height:100%;border-radius:19px;background:#07101b;border:1px solid rgba(255,255,255,.12);touch-action:none}
+  .hint{margin:0;color:#94a3b8;font-size:12px;text-align:center}.hint b{color:#cbd5e1}
+  #overlay{position:absolute;inset:10px;border-radius:19px;background:rgba(4,7,16,.86);backdrop-filter:blur(9px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center}
+  #overlay .emoji{font-size:46px}#overlay h2{margin:0;font-size:25px}#final-score{color:#67e8f9;font-weight:800}
+  button{border:0;border-radius:14px;padding:11px 25px;cursor:pointer;background:linear-gradient(135deg,#8b5cf6,#06b6d4);color:white;font-weight:800;font-size:14px;box-shadow:0 10px 30px rgba(6,182,212,.18)}
+  .mobile-controls{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,50px);gap:7px;direction:ltr}
+  .mobile-controls button{padding:0;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:20px}.mobile-controls .up{grid-column:2}.mobile-controls .left{grid-column:1;grid-row:2}.mobile-controls .down{grid-column:2;grid-row:2}.mobile-controls .right{grid-column:3;grid-row:2}
+  @media(min-width:700px){.mobile-controls{display:none}}
 </style>
 </head>
 <body>
-<h1>🐍 بازی مار</h1>
-<div id="score">امتیاز: 0</div>
-<canvas id="board" width="360" height="360"></canvas>
-<p style="color:#64748b; font-size:12px;">با کلیدهای جهت‌دار یا سوایپ حرکت کن</p>
-
-<div id="overlay">
-  <h2>باختی! 😅</h2>
-  <div id="final-score" style="color:#94a3b8;"></div>
-  <button onclick="startGame()">دوباره امتحان کن</button>
+<div class="wrap">
+  <div class="top"><div class="title"><span>🐍</span> مار کلاسیک</div><div class="score"><small>امتیاز</small><span id="score">0</span></div></div>
+  <div class="board-shell">
+    <canvas id="board" width="600" height="600"></canvas>
+    <div id="overlay"><div class="emoji">💥</div><h2>بازی تموم شد!</h2><div id="final-score"></div><button onclick="startGame()">دوباره بازی کن</button></div>
+  </div>
+  <p class="hint"><b>⌨️ Arrow / WASD</b> برای حرکت · <b>📱 Swipe</b> روی صفحه برای موبایل</p>
+  <div class="mobile-controls" aria-label="کنترل بازی"><button class="up" data-dir="up">⬆️</button><button class="left" data-dir="left">⬅️</button><button class="down" data-dir="down">⬇️</button><button class="right" data-dir="right">➡️</button></div>
 </div>
-
 <script>
-  const canvas = document.getElementById('board');
-  const ctx = canvas.getContext('2d');
-  const gridSize = 18;
-  const cols = canvas.width / gridSize;
-
-  let snake, dir, food, score, speed, gameLoop;
-
-  function startGame() {
-    snake = [{ x: 8, y: 8 }];
-    dir = { x: 1, y: 0 };
-    score = 0;
-    speed = 140;
-    placeFood();
-    document.getElementById('score').textContent = 'امتیاز: 0';
-    document.getElementById('overlay').style.display = 'none';
-    if (gameLoop) clearInterval(gameLoop);
-    gameLoop = setInterval(tick, speed);
-  }
-
-  function placeFood() {
-    food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * cols) };
-  }
-
-  function tick() {
-    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-
-    if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= cols || snake.some(s => s.x === head.x && s.y === head.y)) {
-      endGame();
-      return;
-    }
-
-    snake.unshift(head);
-
-    if (head.x === food.x && head.y === food.y) {
-      score += 10;
-      document.getElementById('score').textContent = 'امتیاز: ' + score;
-      placeFood();
-      if (speed > 60) {
-        speed -= 4;
-        clearInterval(gameLoop);
-        gameLoop = setInterval(tick, speed);
-      }
-    } else {
-      snake.pop();
-    }
-
-    draw();
-  }
-
-  function draw() {
-    ctx.fillStyle = '#0b0d22';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
-
-    snake.forEach((s, i) => {
-      ctx.fillStyle = i === 0 ? '#22d3ee' : '#8b5cf6';
-      ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize - 2, gridSize - 2);
-    });
-  }
-
-  function endGame() {
-    clearInterval(gameLoop);
-    document.getElementById('final-score').textContent = 'امتیازت: ' + score;
-    document.getElementById('overlay').style.display = 'flex';
-    submitScore('snake', score);
-  }
-
-  function submitScore(gameKey, scoreValue) {
-    fetch('/api/game-score-submit.php', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_key: gameKey, score: scoreValue }),
-    }).catch(() => {}); // اگه لاگین نبود یا خطایی شد، بازی رو مختل نکن
-  }
-
-  document.addEventListener('keydown', (e) => {
-    const map = {
-      ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
-      ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
-      w: { x: 0, y: -1 }, s: { x: 0, y: 1 }, a: { x: -1, y: 0 }, d: { x: 1, y: 0 },
-    };
-    const next = map[e.key];
-    if (next && (next.x !== -dir.x || next.y !== -dir.y)) dir = next;
-  });
-
-  // کنترل لمسی برای موبایل
-  let touchStartX = 0, touchStartY = 0;
-  canvas.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  });
-  canvas.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      dir = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
-    } else {
-      dir = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
-    }
-  });
-
-  startGame();
+const canvas=document.getElementById('board'),ctx=canvas.getContext('2d');
+const cells=24, cell=canvas.width/cells;
+let snake,dir,nextDir,food,score,speed,timer,running=false;
+const directions={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+function same(a,b){return a.x===b.x&&a.y===b.y}
+function placeFood(){
+  const free=[]; for(let y=0;y<cells;y++)for(let x=0;x<cells;x++){const p={x,y};if(!snake.some(s=>same(s,p)))free.push(p)}
+  food=free.length?free[Math.floor(Math.random()*free.length)]:null;
+}
+function startGame(){
+  clearInterval(timer); snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];dir={x:1,y:0};nextDir={x:1,y:0};score=0;speed=125;running=true;placeFood();
+  document.getElementById('score').textContent='0';document.getElementById('overlay').style.display='none';draw();timer=setInterval(tick,speed);
+}
+function setDirection(d){if(!running)return;const n=directions[d];if(n.x!==-dir.x||n.y!==-dir.y)nextDir=n}
+function tick(){
+  dir=nextDir;const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+  const hitWall=head.x<0||head.x>=cells||head.y<0||head.y>=cells;
+  const ate=food&&same(head,food);
+  // The tail moves away on a normal step, so allow entering its old cell.
+  const body=ate?snake:snake.slice(0,-1);
+  if(hitWall||body.some(s=>same(s,head))){endGame();return}
+  snake.unshift(head);
+  if(ate){score+=10;document.getElementById('score').textContent=String(score);placeFood();if(speed>60){speed-=3;clearInterval(timer);timer=setInterval(tick,speed)}}else snake.pop();
+  draw();
+}
+function draw(){
+  const g=ctx.createLinearGradient(0,0,canvas.width,canvas.height);g.addColorStop(0,'#071421');g.addColorStop(1,'#090b1b');ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;for(let i=1;i<cells;i++){ctx.beginPath();ctx.moveTo(i*cell,0);ctx.lineTo(i*cell,canvas.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*cell);ctx.lineTo(canvas.width,i*cell);ctx.stroke()}
+  if(food){const fx=food.x*cell+cell/2,fy=food.y*cell+cell/2;ctx.shadowColor='#fb7185';ctx.shadowBlur=24;ctx.fillStyle='#fb7185';ctx.beginPath();ctx.arc(fx,fy,cell*.30,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fecdd3';ctx.beginPath();ctx.arc(fx-cell*.08,fy-cell*.08,cell*.07,0,Math.PI*2);ctx.fill()}
+  snake.forEach((s,i)=>{const x=s.x*cell+2,y=s.y*cell+2,w=cell-4;ctx.shadowColor=i===0?'#22d3ee':'#8b5cf6';ctx.shadowBlur=i===0?18:10;const grad=ctx.createLinearGradient(x,y,x+w,y+w);grad.addColorStop(0,i===0?'#67e8f9':'#a78bfa');grad.addColorStop(1,i===0?'#0891b2':'#6d28d9');ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect(x,y,w,w, i===0?9:7);ctx.fill();ctx.shadowBlur=0;if(i===0)drawFace(x,y,w)});
+}
+function drawFace(x,y,w){ctx.fillStyle='#07101b';const eye=w*.16;ctx.beginPath();ctx.arc(x+w*.34,y+w*.36,eye,0,Math.PI*2);ctx.arc(x+w*.66,y+w*.36,eye,0,Math.PI*2);ctx.fill();}
+function endGame(){if(!running)return;running=false;clearInterval(timer);document.getElementById('final-score').textContent='امتیازت: '+score;document.getElementById('overlay').style.display='flex';submitScore('snake',score)}
+function submitScore(gameKey,scoreValue){fetch('/api/game-score-submit.php',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({game_key:gameKey,score:scoreValue})}).catch(()=>{})}
+document.addEventListener('keydown',e=>{const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',W:'up',s:'down',S:'down',a:'left',A:'left',d:'right',D:'right'};if(map[e.key]){e.preventDefault();setDirection(map[e.key])}});
+document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>setDirection(b.dataset.dir)));
+let sx=0,sy=0;canvas.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY},{passive:true});canvas.addEventListener('touchend',e=>{const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<22)return;if(Math.abs(dx)>Math.abs(dy))setDirection(dx>0?'right':'left');else setDirection(dy>0?'down':'up')},{passive:true});
+startGame();
 </script>
 </body>
 </html>
