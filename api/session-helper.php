@@ -1,14 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
 
-// Central session bootstrap. Keep this deterministic: every request uses the
-// same cookie name, cookie settings and writable session store.
+// Central authentication bootstrap. PHP sessions are kept for compatibility,
+// but authentication also has a small signed cookie so login does not depend on
+// local PHP session files (which can be unreliable on some cPanel setups).
 function startSecureSession(): void {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
 
-    // Isolate this site's session cookie from other PHP apps on the same domain.
     session_name('SITECLASSSESSID');
 
     $sessionsDir = dirname(__DIR__) . '/.sessions';
@@ -16,7 +17,6 @@ function startSecureSession(): void {
         @mkdir($sessionsDir, 0700, true);
     }
 
-    // Always protect the directory, including when cPanel created it during deployment.
     if (is_dir($sessionsDir)) {
         @chmod($sessionsDir, 0700);
         $htaccessPath = $sessionsDir . '/.htaccess';
@@ -29,8 +29,6 @@ function startSecureSession(): void {
         }
     }
 
-    // Prefer the site's private session directory. If the host refuses to make
-    // it writable, use a site-specific directory under PHP's temp directory.
     if (is_dir($sessionsDir) && is_writable($sessionsDir)) {
         session_save_path($sessionsDir);
     } else {
@@ -46,12 +44,6 @@ function startSecureSession(): void {
         }
     }
 
-    // IMPORTANT: decide Secure from the actual PHP HTTPS flag only.
-    // Some cPanel/proxy layers send X-Forwarded-Proto=https even when the
-    // browser is visiting the site over plain HTTP. In that situation a Secure
-    // cookie is accepted by the browser but is NOT sent back over HTTP, which
-    // produces exactly: login succeeds -> dashboard opens -> /api/me.php sees
-    // no session -> redirect to login.
     $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
 
     ini_set('session.use_cookies', '1');
@@ -70,10 +62,83 @@ function startSecureSession(): void {
         'secure' => $isHttps,
     ]);
 
-    // Do not manually pass $_COOKIE's session ID to session_id(). PHP already
-    // restores the cookie. Manual restoration can conflict with strict mode and
-    // make a valid login look logged out on the next request.
     session_start();
+}
+
+function authCookieIsHttps(): bool {
+    return !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
+}
+
+function base64UrlEncode(string $value): string {
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function base64UrlDecode(string $value): string|false {
+    $padding = strlen($value) % 4;
+    if ($padding) {
+        $value .= str_repeat('=', 4 - $padding);
+    }
+    return base64_decode(strtr($value, '-_', '+/'), true);
+}
+
+function setAuthCookie(int $userId): void {
+    $expires = time() + (60 * 60 * 24 * 30);
+    $payload = $userId . '.' . $expires;
+    $signature = hash_hmac('sha256', $payload, SESSION_SECRET);
+    $value = base64UrlEncode($payload . '.' . $signature);
+
+    setcookie('SITECLASS_AUTH', $value, [
+        'expires' => $expires,
+        'path' => '/',
+        'secure' => authCookieIsHttps(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function clearAuthCookie(): void {
+    setcookie('SITECLASS_AUTH', '', [
+        'expires' => time() - 42000,
+        'path' => '/',
+        'secure' => authCookieIsHttps(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function getUserFromAuthCookie(): ?array {
+    $raw = $_COOKIE['SITECLASS_AUTH'] ?? '';
+    if ($raw === '') {
+        return null;
+    }
+
+    $decoded = base64UrlDecode($raw);
+    if ($decoded === false) {
+        return null;
+    }
+
+    $parts = explode('.', $decoded);
+    if (count($parts) !== 3) {
+        return null;
+    }
+
+    [$userId, $expires, $signature] = $parts;
+    if (!ctype_digit($userId) || !ctype_digit($expires) || (int)$expires < time()) {
+        return null;
+    }
+
+    $payload = $userId . '.' . $expires;
+    $expected = hash_hmac('sha256', $payload, SESSION_SECRET);
+    if (!hash_equals($expected, $signature)) {
+        return null;
+    }
+
+    $pdo = getDB();
+    $stmt = $pdo->prepare('SELECT id, username, display_name, role FROM users WHERE id = ? LIMIT 1');
+    $stmt->execute([(int)$userId]);
+    $user = $stmt->fetch();
+
+    return $user ?: null;
 }
 
 function jsonResponse($data, int $status = 200): void {
@@ -87,16 +152,33 @@ function jsonResponse($data, int $status = 200): void {
 function requireLogin(): array {
     startSecureSession();
 
-    if (!isset($_SESSION['user_id'])) {
-        jsonResponse(['error' => 'وارد نشدی'], 401);
+    // Normal PHP session path.
+    if (isset($_SESSION['user_id'])) {
+        return [
+            'id' => (int)$_SESSION['user_id'],
+            'username' => (string)($_SESSION['username'] ?? ''),
+            'display_name' => (string)($_SESSION['display_name'] ?? $_SESSION['username'] ?? ''),
+            'role' => (string)($_SESSION['role'] ?? 'student'),
+        ];
     }
 
-    return [
-        'id' => (int)$_SESSION['user_id'],
-        'username' => (string)($_SESSION['username'] ?? ''),
-        'display_name' => (string)($_SESSION['display_name'] ?? $_SESSION['username'] ?? ''),
-        'role' => (string)($_SESSION['role'] ?? 'student'),
-    ];
+    // Fallback path: signed auth cookie survives broken/non-persistent PHP sessions.
+    $user = getUserFromAuthCookie();
+    if ($user) {
+        $_SESSION['user_id'] = (int)$user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['display_name'] = $user['display_name'];
+        $_SESSION['role'] = $user['role'];
+
+        return [
+            'id' => (int)$user['id'],
+            'username' => (string)$user['username'],
+            'display_name' => (string)$user['display_name'],
+            'role' => (string)$user['role'],
+        ];
+    }
+
+    jsonResponse(['error' => 'وارد نشدی'], 401);
 }
 
 function getJsonInput(): array {
