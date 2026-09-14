@@ -18,7 +18,7 @@ async function apiRequest(path, options = {}) {
 const api = {
   register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
   login: async (username, password) => {
-    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
+    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, display_name: display_name || '', password }) });
     if (!data || !data.token) {
       const responseDetails = data && data._raw ? data._raw : JSON.stringify(data || {});
       console.error('SITECLASS LOGIN RESPONSE:', data);
@@ -56,7 +56,7 @@ const api = {
   getStudentGame: (id) => apiRequest(`/student-games-get.php?id=${id}`),
   submitStudentGame: (payload) => apiRequest('/student-games-create.php', { method: 'POST', body: JSON.stringify(payload) }),
   submitGameScore: (game_key, score) => apiRequest('/game-score-submit.php', { method: 'POST', body: JSON.stringify({ game_key, score }) }),
-  getLeaderboard: (game_key) => apiRequest(`/game-leaderboard.php${game_key ? '?game_key=' + game_key : ''}`),
+  getLeaderboard: (game_key) => apiRequest(`/game-leaderboard.php${game_key ? '?game_key=' + encodeURIComponent(game_key) : ''}`),
   getProfile: () => apiRequest('/profile-get.php'),
   updateProfile: (payload) => apiRequest('/profile-update.php', { method: 'POST', body: JSON.stringify(payload) }),
   getAllUsers: () => apiRequest('/admin-users-list.php'),
@@ -67,13 +67,13 @@ const api = {
   getLessonSubjects: () => apiRequest('/lessons-subjects-list.php'),
   createLessonSubject: (name) => apiRequest('/lessons-subjects-create.php', { method: 'POST', body: JSON.stringify({ name }) }),
   getLessonContents: (subject_id) => apiRequest(`/lessons-contents-list.php?subject_id=${subject_id}`),
-  addLessonContent: (payload) => apiRequest('/lessons-contents-create.php', { method: 'POST', body: JSON.stringify({ subject_id, content: payload.content }) }),
+  addLessonContent: (payload) => apiRequest('/lessons-contents-create.php', { method: 'POST', body: JSON.stringify({ subject_id: payload.subject_id, content: payload.content }) }),
   getBooks: () => apiRequest('/notes-books-list.php'),
   createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count }) }),
   getNotes: (chapter_id) => apiRequest(`/notes-list.php?chapter_id=${chapter_id}`),
   createNote: (payload) => apiRequest('/notes-create.php', { method: 'POST', body: JSON.stringify(payload) }),
   getSocialPosts: () => apiRequest('/social-posts-list.php'),
-  createSocialPost: (content) => apiRequest('/social-posts-create.php', { method: 'POST', body: JSON.stringify({ content }) }),
+  createSocialPost: (content, media_url = '', media_type = '') => apiRequest('/social-posts-create.php', { method: 'POST', body: JSON.stringify({ content, media_url, media_type }) }),
   getBugs: () => apiRequest('/bugs-list.php'),
   createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description }) }),
   addBugComment: (bug_id, content) => apiRequest('/bugs-comment.php', { method: 'POST', body: JSON.stringify({ bug_id, content }) }),
