@@ -7,3 +7,10 @@
 <IfModule mod_php8.c>
   php_flag session.auto_start off
 </IfModule>
+
+# cPanel/Apache + PHP-FPM/CGI can strip the Authorization header.
+# Preserve it so the site's Bearer-token authentication reaches PHP.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
