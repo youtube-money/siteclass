@@ -15,9 +15,13 @@ async function apiRequest(path, options = {}) {
 function uploadDriveChunk(uploadId, file, start, end, onProgress, token) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const params = new URLSearchParams({ uploadId, start: String(start), end: String(end), total: String(file.size) });
-    xhr.open('POST', `${API_BASE}/upload-chunk.php?${params.toString()}`, true);
-    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    const form = new FormData();
+    form.append('uploadId', uploadId);
+    form.append('start', String(start));
+    form.append('end', String(end));
+    form.append('total', String(file.size));
+    form.append('chunk', file.slice(start, end + 1), file.name);
+    xhr.open('POST', `${API_BASE}/upload-chunk.php`, true);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.timeout = 15 * 60 * 1000;
     xhr.upload.onprogress = e => {
@@ -31,7 +35,7 @@ function uploadDriveChunk(uploadId, file, start, end, onProgress, token) {
       if (xhr.status >= 200 && xhr.status < 300 && data.success) resolve(data);
       else reject(new Error(data.error || `ارسال بخش فایل ناموفق بود (HTTP ${xhr.status})`));
     };
-    xhr.send(file.slice(start, end + 1));
+    xhr.send(form);
   });
 }
 
@@ -78,7 +82,7 @@ const api = {
   getStudentGames:()=>apiRequest('/student-games-list.php'), getStudentGame:id=>apiRequest(`/student-games-get.php?id=${id}`), submitStudentGame:p=>apiRequest('/student-games-create.php',{method:'POST',body:JSON.stringify(p)}), submitGameScore:(game_key,score)=>apiRequest('/game-score-submit.php',{method:'POST',body:JSON.stringify({game_key,score})}), getLeaderboard:game_key=>apiRequest(`/game-leaderboard.php${game_key?'?game_key='+encodeURIComponent(game_key):''}`),
   getProfile:()=>apiRequest('/profile-get.php'), updateProfile:p=>apiRequest('/profile-update.php',{method:'POST',body:JSON.stringify(p)}), getAllUsers:()=>apiRequest('/admin-users-list.php'), setUserRole:(user_id,role)=>apiRequest('/admin-users-set-role.php',{method:'POST',body:JSON.stringify({user_id,role})}), getSiteApiKeys:()=>apiRequest('/admin-api-keys-list.php'), saveSiteApiKey:p=>apiRequest('/admin-api-keys-save.php',{method:'POST',body:JSON.stringify(p)}), setSharedMemory:enabled=>apiRequest('/admin-api-keys-shared-memory.php',{method:'POST',body:JSON.stringify({enabled})}),
   getLessonSubjects:()=>apiRequest('/lessons-subjects-list.php'), createLessonSubject:name=>apiRequest('/lessons-subjects-create.php',{method:'POST',body:JSON.stringify({name})}), getLessonContents:subject_id=>apiRequest(`/lessons-contents-list.php?subject_id=${subject_id}`), addLessonContent:p=>apiRequest('/lessons-contents-create.php',{method:'POST',body:JSON.stringify({subject_id:p.subject_id,content:p.content})}), getBooks:()=>apiRequest('/notes-books-list.php'), createBook:(title,chapter_count)=>apiRequest('/notes-books-create.php',{method:'POST',body:JSON.stringify({title,chapter_count})}), getNotes:chapter_id=>apiRequest(`/notes-list.php?chapter_id=${chapter_id}`), createNote:p=>apiRequest('/notes-create.php',{method:'POST',body:JSON.stringify(p)}),
-  getSocialPosts:()=>apiRequest('/social-posts-list.php'), createSocialPost:(content,media_url='',media_type='')=>apiRequest('/social-posts-create.php',{method:'POST',body:JSON.stringify({content,media_url,media_type})}), getBugs:()=>apiRequest('/bugs-list.php'), createBug:(title,description)=>apiRequest('/bugs-create.php',{method:'POST',body:JSON.stringify({title,description})}), addBugComment:(bug_id,content)=>apiRequest('/bugs-comment.php',{method:'POST',body:JSON.stringify({bug_id,content})}), askCodeHelp:(code,question)=>apiRequest('/projects-code-help.php',{method:'POST',body:JSON.stringify({code,question})}), askProjectAI:(project_id,message)=>apiRequest('/projects-ai-ask.php',{method:'POST',body:JSON.stringify({project_id,message})}), getProjectCode:project_id=>apiRequest(`/projects-code-get.php?project_id=${project_id}`), saveProjectCode:(project_id,code,language)=>apiRequest('/projects-code-save.php',{method:'POST',body:JSON.stringify({project_id,code,language})})
+  getSocialPosts:()=>apiRequest('/social-posts-list.php'), createSocialPost:(content,media_url='',media_type='')=>apiRequest('/social-posts-create.php',{method:'POST',body:JSON.stringify({content,media_url,media_type})}), getBugs:()=>apiRequest('/bugs-list.php'), createBug:(title,description)=>apiRequest('/bugs-create.php',{method:'POST',body:JSON.stringify({title,description})}), addBugComment:(bug_id,content)=>apiRequest('/bugs-comment.php',{method:'POST',body:JSON.stringify({bug_id,content})}), askCodeHelp:(code,question)=>apiRequest('/projects-code-help.php',{method:'POST',body:JSON.stringify({code,question})), askProjectAI:(project_id,message)=>apiRequest('/projects-ai-ask.php',{method:'POST',body:JSON.stringify({project_id,message})}), getProjectCode:project_id=>apiRequest(`/projects-code-get.php?project_id=${project_id}`), saveProjectCode:(project_id,code,language)=>apiRequest('/projects-code-save.php',{method:'POST',body:JSON.stringify({project_id,code,language})})
 };
 
 function renderTopNav(user,activePage){const baseLinks=[{href:'dashboard.html',label:'🏠 خانه'},{href:'chat.html',label:'💬 چت'},{href:'schedule.html',label:'📅 برنامه'},{href:'lessons.html',label:'📚 دروس'},{href:'notes.html',label:'📝 جزوه'},{href:'outings.html',label:'🌳 بیرون‌رفتن'},{href:'games.html',label:'🎮 سرگرمی'},{href:'uploads.html',label:'📁 آپلودها'},{href:'videos.html',label:'📺 ویدیوها'},{href:'projects.html',label:'🧩 تکلیف'},{href:'account.html',label:'👤 حساب من'},{href:'donate.html',label:'💛 دونیت'},{href:'bugs.html',label:'🛠 رفع اشکال'}];if(user.role==='special'||user.role==='admin')baseLinks.push({href:'social.html',label:'🔒 شبکهٔ اجتماعی'});if(user.role==='admin')baseLinks.push({href:'admin.html',label:'🛡 پنل ادمین'});const linksHtml=baseLinks.map(l=>`<a href="${l.href}" class="${activePage===l.href?'active':''}">${l.label}</a>`).join('');document.body.insertAdjacentHTML('afterbegin',`<nav class="topnav" id="topnav"><button class="nav-toggle" id="nav-toggle" aria-label="منو">☰</button><div class="nav-links" id="nav-links">${linksHtml}</div><span class="spacer"></span><span class="user-name">${user.avatar_emoji||''} ${user.display_name||user.username}</span><button class="logout" onclick="handleLogout()">خروج</button></nav>`);document.getElementById('nav-toggle').addEventListener('click',()=>document.getElementById('nav-links').classList.toggle('open'));}
