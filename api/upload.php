@@ -30,24 +30,31 @@ if ((int)$file['size'] > $maxSize) {
 }
 
 try {
+    $accessToken = getGoogleAccessToken(GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY);
     $mimeType = $file['type'] ?: 'application/octet-stream';
     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($file['name'])) ?: 'upload.bin';
+
     $driveFile = uploadFileToDrive(
-        getGoogleAccessToken(GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY),
+        $accessToken,
         GOOGLE_DRIVE_FOLDER_ID,
         $file['tmp_name'],
         time() . '_' . $safeName,
         $mimeType
     );
 
-    makeDriveFilePublic($accessToken = getGoogleAccessToken(GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY), $driveFile['id']);
+    makeDriveFilePublic($accessToken, $driveFile['id']);
     $directLink = 'https://drive.google.com/uc?export=view&id=' . rawurlencode($driveFile['id']);
 
     $pdo = getDB();
     $stmt = $pdo->prepare(
         'INSERT INTO uploads (uploader_id, filename, drive_file_id, drive_view_link) VALUES (?, ?, ?, ?)'
     );
-    $stmt->execute([$me['id'], $file['name'], $driveFile['id'], $driveFile['webViewLink'] ?? 'https://drive.google.com/file/d/' . $driveFile['id'] . '/view']);
+    $stmt->execute([
+        $me['id'],
+        $file['name'],
+        $driveFile['id'],
+        $driveFile['webViewLink'] ?? 'https://drive.google.com/file/d/' . $driveFile['id'] . '/view',
+    ]);
 
     jsonResponse([
         'success' => true,
