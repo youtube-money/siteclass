@@ -8,6 +8,10 @@ $input = getJsonInput();
 $username = trim($input['username'] ?? '');
 $password = $input['password'] ?? '';
 
+if ($username === '' || $password === '') {
+    jsonResponse(['error' => 'نام کاربری و رمز عبور رو وارد کن'], 400);
+}
+
 $pdo = getDB();
 $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
 $stmt->execute([$username]);
@@ -17,10 +21,17 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
     jsonResponse(['error' => 'نام کاربری یا رمز عبور اشتباهه'], 401);
 }
 
-// اطلاعات ورود روی سشن سرور ذخیره می‌شه (نه توکن قابل‌جعل توی مرورگر)
+// Prevent session fixation and make the authenticated session persist on the
+// same cookie/store that every protected page uses.
+if (!session_regenerate_id(true)) {
+    jsonResponse(['error' => 'خطا در ساخت نشست ورود؛ دوباره تلاش کن'], 500);
+}
+
 $_SESSION['user_id'] = (int)$user['id'];
 $_SESSION['username'] = $user['username'];
+$_SESSION['display_name'] = $user['display_name'];
 $_SESSION['role'] = $user['role'];
+$_SESSION['logged_in_at'] = time();
 
 jsonResponse([
     'user' => [
