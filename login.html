@@ -29,11 +29,11 @@
   </form>
   <div class="switch-link" id="switch-link">حساب نداری؟ ثبت‌نام کن</div>
 </div></div>
-<script src="assets/js/api.js?v=20260914-authfix"></script>
+<script src="assets/js/api.js?v=20260914-authfix2"></script>
 <script>
 let isRegister=false;
 document.getElementById('switch-link').addEventListener('click',()=>{isRegister=!isRegister;document.getElementById('form-title').textContent=isRegister?'ثبت‌نام':'ورود به کلاس';document.getElementById('form-sub').textContent=isRegister?'یه حساب جدید بساز':'با نام کاربری و رمزت وارد شو';document.getElementById('display-name-field').style.display=isRegister?'block':'none';document.getElementById('submit-btn').textContent=isRegister?'ثبت‌نام':'ورود';document.getElementById('switch-link').textContent=isRegister?'حساب داری؟ وارد شو':'حساب نداری؟ ثبت‌نام کن';});
-document.getElementById('auth-form').addEventListener('submit',async(e)=>{e.preventDefault();const errorEl=document.getElementById('error-msg');errorEl.style.display='none';const username=document.getElementById('username').value.trim();const password=document.getElementById('password').value;const displayName=document.getElementById('display_name').value.trim();const submitBtn=document.getElementById('submit-btn');submitBtn.disabled=true;try{if(isRegister)await api.register(username,displayName,password);await api.login(username,password);location.href='dashboard.html';}catch(err){errorEl.textContent=err.message;errorEl.style.display='block';}finally{submitBtn.disabled=false;}});
+document.getElementById('auth-form').addEventListener('submit',async(e)=>{e.preventDefault();const errorEl=document.getElementById('error-msg');errorEl.style.display='none';const username=document.getElementById('username').value.trim();const password=document.getElementById('password').value;const displayName=document.getElementById('display_name').value.trim();const submitBtn=document.getElementById('submit-btn');submitBtn.disabled=true;try{if(isRegister)await api.register(username,displayName,password);const loginData=await api.login(username,password);if(!loginData?.token)throw new Error('توکن ورود دریافت نشد');location.href='dashboard.html#auth='+encodeURIComponent(loginData.token);}catch(err){errorEl.textContent=err.message;errorEl.style.display='block';}finally{submitBtn.disabled=false;}});
 </script>
 </body>
 </html>
