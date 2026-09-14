@@ -3,6 +3,7 @@ require_once __DIR__ . '/session-helper.php';
 
 startSecureSession();
 $_SESSION = [];
+clearAuthCookie();
 
 $params = session_get_cookie_params();
 setcookie(session_name(), '', [
@@ -15,5 +16,4 @@ setcookie(session_name(), '', [
 ]);
 
 session_destroy();
-
 jsonResponse(['success' => true]);
