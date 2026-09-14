@@ -4,12 +4,20 @@ require_once __DIR__ . '/config.php';
 // ⚠️ فایل امنیتی — دست‌کاری این فایل می‌تونه امنیت ورود کاربرها رو خراب کنه.
 
 function startSecureSession(): void {
+    $sessionsDir = dirname(__DIR__) . '/.sessions';
+
     if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
+        if (session_save_path() === $sessionsDir) {
+            return;
+        }
+        @session_abort();
+        header_remove('Set-Cookie');
     }
 
     if (session_status() === PHP_SESSION_NONE) {
-        $sessionsDir = dirname(__DIR__) . '/.sessions';
+        $sessionName = session_name();
+        $cookieSessionId = $_COOKIE[$sessionName] ?? null;
+
         if (!is_dir($sessionsDir)) {
             @mkdir($sessionsDir, 0700, true);
         }
@@ -31,8 +39,7 @@ function startSecureSession(): void {
         ini_set('session.use_only_cookies', '1');
         ini_set('session.use_strict_mode', '1');
 
-        $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
-                || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+        $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
 
         session_set_cookie_params([
             'lifetime' => 60 * 60 * 24 * 30, // ۳۰ روز
@@ -41,6 +48,10 @@ function startSecureSession(): void {
             'samesite' => 'Lax',
             'secure' => $isHttps,
         ]);
+
+        if (!empty($cookieSessionId) && is_string($cookieSessionId) && preg_match('/^[a-zA-Z0-9,-]{20,128}$/', $cookieSessionId)) {
+            session_id($cookieSessionId);
+        }
 
         session_start();
     }
