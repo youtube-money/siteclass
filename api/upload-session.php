@@ -48,13 +48,24 @@ try {
 
     $metadata = json_encode(['name' => time().'_'.$name, 'parents' => [GOOGLE_DRIVE_FOLDER_ID]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $sessionUrl = null;
+    $browserOrigin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    $headers = [
+        "Authorization: Bearer $token",
+        'Content-Type: application/json; charset=UTF-8',
+        "X-Upload-Content-Type: $mimeType",
+        "X-Upload-Content-Length: $size"
+    ];
+    // Google uses the origin from the resumable-session request when deciding
+    // whether the later browser PUT response is readable by the browser.
+    if ($browserOrigin !== '' && preg_match('#^https?://[^\s/]+(?::\d+)?$#i', $browserOrigin)) {
+        $headers[] = 'Origin: ' . $browserOrigin;
+    }
+
     $ch = curl_init('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,webViewLink');
     curl_setopt_array($ch, [
         CURLOPT_POST=>true, CURLOPT_POSTFIELDS=>$metadata,
-        CURLOPT_HTTPHEADER=>[
-            "Authorization: Bearer $token", 'Content-Type: application/json; charset=UTF-8',
-            "X-Upload-Content-Type: $mimeType", "X-Upload-Content-Length: $size"
-        ], CURLOPT_RETURNTRANSFER=>true, CURLOPT_HEADERFUNCTION=>function($curl,$header) use (&$sessionUrl){
+        CURLOPT_HTTPHEADER=>$headers,
+        CURLOPT_RETURNTRANSFER=>true, CURLOPT_HEADERFUNCTION=>function($curl,$header) use (&$sessionUrl){
             if (stripos($header,'Location:') === 0) $sessionUrl = trim(substr($header, strlen('Location:'))); return strlen($header);
         }, CURLOPT_TIMEOUT=>30
     ]);
