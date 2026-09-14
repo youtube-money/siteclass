@@ -12,6 +12,33 @@ async function apiRequest(path, options = {}) {
   return data;
 }
 
+function uploadDriveChunk(sessionUrl, file, start, end, onProgress, token) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', API_BASE + '/upload-chunk.php', true);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('X-Drive-Upload-Url', sessionUrl);
+    xhr.setRequestHeader('X-Drive-Start', String(start));
+    xhr.setRequestHeader('X-Drive-End', String(end));
+    xhr.setRequestHeader('X-Drive-Total', String(file.size));
+    xhr.setRequestHeader('X-Drive-Mime', file.type || 'application/octet-stream');
+    xhr.timeout = 15 * 60 * 1000;
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable && typeof onProgress === 'function') onProgress(e.loaded, end - start + 1);
+    };
+    xhr.onerror = () => reject(new Error('ارتباط با سرور آپلود قطع شد. دوباره امتحان کن.'));
+    xhr.ontimeout = () => reject(new Error('ارسال این بخش بیشتر از زمان مجاز طول کشید.'));
+    xhr.onload = () => {
+      let data = {};
+      try { data = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300 && data.success) resolve(data);
+      else reject(new Error(data.error || `ارسال بخش فایل ناموفق بود (HTTP ${xhr.status})`));
+    };
+    xhr.send(file.slice(start, end + 1));
+  });
+}
+
 async function uploadFileDirectToDrive(file, onProgress) {
   if (!file || !file.size) throw new Error('فایل نامعتبره.');
   const max = 1024 * 1024 * 1024;
@@ -21,15 +48,18 @@ async function uploadFileDirectToDrive(file, onProgress) {
   const startRes = await fetch(API_BASE + '/upload-session.php', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({name:file.name,mimeType:file.type||'application/octet-stream',size:file.size}) });
   const startText = await startRes.text(); let startData={}; try{startData=startText?JSON.parse(startText):{};}catch(_){startData={_raw:startText};}
   if(!startRes.ok||!startData.uploadUrl) throw new Error(startData.error||startData._raw||`شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
-  const driveResponse = await new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest(); xhr.open('PUT',startData.uploadUrl,true); xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream'); xhr.timeout=15*60*1000;
-    xhr.upload.onprogress=e=>{if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.round(e.loaded/e.total*100));};
-    xhr.onerror=()=>reject(new Error('ارتباط مستقیم با Google Drive قطع شد. دوباره امتحان کن.'));
-    xhr.ontimeout=()=>reject(new Error('آپلود بیشتر از زمان مجاز طول کشید.'));
-    xhr.onload=()=>{let data={};try{data=xhr.responseText?JSON.parse(xhr.responseText):{};}catch(_){} if(xhr.status>=200&&xhr.status<300&&data.id)resolve(data);else reject(new Error(data.error?.message||`آپلود Google Drive ناموفق بود (HTTP ${xhr.status})`));};
-    xhr.send(file);
-  });
-  const finalize=await apiRequest('/upload-finalize.php',{method:'POST',body:JSON.stringify({fileId:driveResponse.id,filename:file.name,size:file.size,mimeType:file.type||'application/octet-stream'})});
+
+  const chunkSize = 8 * 1024 * 1024;
+  let driveFile = null;
+  for (let start = 0; start < file.size; start += chunkSize) {
+    const end = Math.min(file.size - 1, start + chunkSize - 1);
+    const result = await uploadDriveChunk(startData.uploadUrl, file, start, end, (loaded) => {
+      if (typeof onProgress === 'function') onProgress(Math.min(99, Math.round(((start + loaded) / file.size) * 100)));
+    }, token);
+    if (result.complete) { driveFile = result.file; break; }
+  }
+  if (!driveFile || !driveFile.id) throw new Error('آپلود Google Drive کامل نشد.');
+  const finalize = await apiRequest('/upload-finalize.php',{method:'POST',body:JSON.stringify({fileId:driveFile.id,filename:file.name,size:file.size,mimeType:file.type||'application/octet-stream'})});
   if(typeof onProgress==='function')onProgress(100); return finalize;
 }
 
