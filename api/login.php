@@ -21,8 +21,6 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
     jsonResponse(['error' => 'نام کاربری یا رمز عبور اشتباهه'], 401);
 }
 
-// Prevent session fixation and make the authenticated session persist on the
-// same cookie/store that every protected page uses.
 if (!session_regenerate_id(true)) {
     jsonResponse(['error' => 'خطا در ساخت نشست ورود؛ دوباره تلاش کن'], 500);
 }
@@ -32,6 +30,10 @@ $_SESSION['username'] = $user['username'];
 $_SESSION['display_name'] = $user['display_name'];
 $_SESSION['role'] = $user['role'];
 $_SESSION['logged_in_at'] = time();
+
+// Keep authentication alive even when cPanel/PHP does not persist local
+// session files consistently between requests.
+setAuthCookie((int)$user['id']);
 
 jsonResponse([
     'user' => [
