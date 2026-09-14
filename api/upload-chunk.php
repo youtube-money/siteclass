@@ -4,13 +4,17 @@ require_once __DIR__ . '/google-oauth.php';
 
 requireLogin();
 
-$sessionUrl = trim((string)($_SERVER['HTTP_X_DRIVE_UPLOAD_URL'] ?? ''));
-$start = isset($_SERVER['HTTP_X_DRIVE_START']) ? (int)$_SERVER['HTTP_X_DRIVE_START'] : -1;
-$end = isset($_SERVER['HTTP_X_DRIVE_END']) ? (int)$_SERVER['HTTP_X_DRIVE_END'] : -1;
-$total = isset($_SERVER['HTTP_X_DRIVE_TOTAL']) ? (int)$_SERVER['HTTP_X_DRIVE_TOTAL'] : -1;
-$mime = trim((string)($_SERVER['HTTP_X_DRIVE_MIME'] ?? 'application/octet-stream'));
+$sessionUrl = trim((string)($_GET['uploadUrl'] ?? ''));
+$start = isset($_GET['start']) ? (int)$_GET['start'] : -1;
+$end = isset($_GET['end']) ? (int)$_GET['end'] : -1;
+$total = isset($_GET['total']) ? (int)$_GET['total'] : -1;
+$mime = trim((string)($_GET['mime'] ?? 'application/octet-stream')) ?: 'application/octet-stream';
 
-if ($sessionUrl === '' || !preg_match('#^https://www\.googleapis\.com/upload/drive/v3/files\?uploadType=resumable&upload_id=[A-Za-z0-9_\-]+$#', $sessionUrl)) {
+if (
+    $sessionUrl === '' ||
+    !filter_var($sessionUrl, FILTER_VALIDATE_URL) ||
+    !str_starts_with($sessionUrl, 'https://www.googleapis.com/')
+) {
     jsonResponse(['error' => 'نشست آپلود Google Drive نامعتبره.'], 400);
 }
 if ($start < 0 || $end < $start || $total <= 0 || $end >= $total) {
@@ -47,6 +51,10 @@ try {
     curl_close($ch);
     fclose($fp);
 
+    $data = json_decode((string)$response, true);
+    $detail = is_array($data) && !empty($data['error']['message']) ? $data['error']['message'] : trim((string)$response);
+    error_log('[SITECLASS DRIVE] chunk: http=' . $code . ' start=' . $start . ' end=' . $end . ' total=' . $total . ' mime=' . $mime . ($detail !== '' ? ' response=' . substr($detail, 0, 1000) : ''));
+
     if ($response === false || $error) throw new Exception('ارتباط با Google Drive: ' . $error);
 
     if ($code === 308) {
@@ -56,13 +64,12 @@ try {
         exit;
     }
 
-    $data = json_decode($response, true);
     if ($code >= 200 && $code < 300 && is_array($data) && !empty($data['id'])) {
         jsonResponse(['success'=>true,'complete'=>true,'file'=>$data]);
     }
 
-    $detail = is_array($data) && !empty($data['error']['message']) ? $data['error']['message'] : trim((string)$response);
     throw new Exception('Google Drive HTTP ' . $code . ($detail !== '' ? ' - ' . $detail : ''));
 } catch (Throwable $e) {
+    error_log('[SITECLASS DRIVE] chunk exception: ' . $e->getMessage());
     jsonResponse(['error'=>'ارسال بخش فایل به Google Drive ناموفق بود: ' . $e->getMessage()], 502);
 }
