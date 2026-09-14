@@ -1,76 +1,13 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>شبکه اجتماعی — سایت کلاس</title>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css">
-<style>
-:root{--social-bg:#090b12;--card:#111522;--line:rgba(255,255,255,.09)}
-body{background:var(--social-bg)}
-.social-wrap{max-width:760px;margin:auto;padding:18px 12px 50px}
-.social-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.brand{font-size:24px;font-weight:800}.badge{font-size:12px;padding:7px 10px;border-radius:999px;background:rgba(139,92,246,.14);color:#c4b5fd}
-.composer,.post{background:rgba(17,21,34,.9);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 16px 45px rgba(0,0,0,.22)}
-.composer{padding:16px;margin-bottom:22px}.composer-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
-.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#06b6d4);font-size:21px}
-textarea{width:100%;resize:vertical;min-height:70px;background:#0b0e17!important;border:1px solid var(--line)!important;color:#fff!important;border-radius:15px!important;padding:12px!important}
-.tabs{display:flex;gap:8px;margin:12px 0}.tab{flex:1;padding:11px;border:1px solid var(--line);border-radius:13px;background:#0b0e17;color:#aaa;cursor:pointer;font-family:inherit}.tab.active{background:rgba(124,58,237,.2);color:#fff;border-color:rgba(124,58,237,.55)}
-.media-picker{display:none;gap:10px;align-items:center;padding:10px 0}.media-picker.show{display:flex}.file-label{display:inline-flex;align-items:center;gap:7px;padding:10px 13px;border:1px dashed #555;border-radius:12px;cursor:pointer;color:#ddd}.preview{max-width:100%;max-height:360px;border-radius:16px;display:none;margin-top:10px}.preview.show{display:block}.composer-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}.hint{font-size:11px;color:#777}
-.post{margin-bottom:18px}.post-head{display:flex;align-items:center;gap:10px;padding:14px 16px}.post-name{font-weight:700}.post-time{font-size:11px;color:#777;margin-top:2px}.post-media{width:100%;max-height:620px;object-fit:cover;background:#050609;display:block}.post-caption{padding:13px 16px 17px;white-space:pre-wrap;line-height:1.8}.empty{text-align:center;color:#777;padding:40px 15px}.loading{text-align:center;color:#aaa;padding:25px}
-@media(max-width:600px){.social-wrap{padding-top:10px}.post-media{max-height:520px}.social-head{margin-bottom:12px}}
-</style>
-</head>
-<body>
-<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
-<main class="social-wrap">
-  <header class="social-head"><div class="brand">📸 Class Social</div><span class="badge">🔒 ویژه اعضا</span></header>
-
-  <section class="composer">
-    <div class="composer-top"><div class="avatar" id="my-avatar">👤</div><div><b id="my-name">دانش‌آموز</b><div style="font-size:11px;color:#777">Share something with the class</div></div></div>
-    <textarea id="post-content" placeholder="چی شده؟ چی ساختی؟ چی می‌خوای با کلاس به اشتراک بذاری؟"></textarea>
-    <div class="tabs"><button class="tab active" data-type="text">📝 پست</button><button class="tab" data-type="image">🖼 عکس</button><button class="tab" data-type="video">🎬 ریلز</button></div>
-    <div class="media-picker" id="media-picker"><label class="file-label" for="media-input">＋ انتخاب فایل</label><input id="media-input" type="file" accept="image/*,video/*" hidden><span id="file-name" class="hint">برای ریلز و عکس، فایل انتخاب کن</span></div>
-    <img id="image-preview" class="preview" alt="پیش‌نمایش عکس">
-    <video id="video-preview" class="preview" controls playsinline></video>
-    <div class="composer-actions"><span class="hint">حداکثر فایل: ۱ گیگابایت</span><button class="btn btn-primary" id="post-btn">منتشر کن 🚀</button></div>
-    <p id="error-msg" class="error-text" style="display:none;margin:10px 0 0"></p>
-  </section>
-
-  <section id="posts-list"><div class="loading">در حال بارگذاری پست‌ها…</div></section>
-</main>
-<script src="assets/js/api.js?v=20260914-social1"></script>
-<script>
-let currentUser=null, selectedType='text', selectedFile=null;
-const $=id=>document.getElementById(id);
-requirePageRole('social.html',['special','admin']).then(user=>{if(!user)return;currentUser=user;$('my-name').textContent=user.display_name||user.username;$('my-avatar').textContent=user.avatar_emoji||'👤';loadPosts();});
-
-document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
-  selectedType=tab.dataset.type; document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));tab.classList.add('active');
-  $('media-picker').classList.toggle('show',selectedType!=='text'); clearPreview();
-  $('media-input').accept=selectedType==='image'?'image/*':'video/*';
-}));
+<html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>شبکه اجتماعی — سایت کلاس</title><link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/style.css"><style>:root{--social-bg:#090b12;--card:#111522;--line:rgba(255,255,255,.09)}body{background:var(--social-bg)}.social-wrap{max-width:760px;margin:auto;padding:18px 12px 50px}.social-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.brand{font-size:24px;font-weight:800}.badge{font-size:12px;padding:7px 10px;border-radius:999px;background:rgba(139,92,246,.14);color:#c4b5fd}.composer,.post{background:rgba(17,21,34,.9);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 16px 45px rgba(0,0,0,.22)}.composer{padding:16px;margin-bottom:22px}.composer-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#06b6d4);font-size:21px}textarea{width:100%;resize:vertical;min-height:70px;background:#0b0e17!important;border:1px solid var(--line)!important;color:#fff!important;border-radius:15px!important;padding:12px!important}.tabs{display:flex;gap:8px;margin:12px 0}.tab{flex:1;padding:11px;border:1px solid var(--line);border-radius:13px;background:#0b0e17;color:#aaa;cursor:pointer;font-family:inherit}.tab.active{background:rgba(124,58,237,.2);color:#fff;border-color:rgba(124,58,237,.55)}.media-picker{display:none;gap:10px;align-items:center;padding:10px 0}.media-picker.show{display:flex}.file-label{display:inline-flex;align-items:center;gap:7px;padding:10px 13px;border:1px dashed #555;border-radius:12px;cursor:pointer;color:#ddd}.preview{max-width:100%;max-height:360px;border-radius:16px;display:none;margin-top:10px}.preview.show{display:block}.composer-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}.hint{font-size:11px;color:#777}.post{margin-bottom:18px}.post-head{display:flex;align-items:center;gap:10px;padding:14px 16px}.post-name{font-weight:700}.post-time{font-size:11px;color:#777;margin-top:2px}.post-media{width:100%;max-height:620px;object-fit:cover;background:#050609;display:block}.post-caption{padding:13px 16px 17px;white-space:pre-wrap;line-height:1.8}.empty{text-align:center;color:#777;padding:40px 15px}.loading{text-align:center;color:#aaa;padding:25px}.upload-progress{height:8px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:10px;display:none}.upload-progress.show{display:block}.upload-progress>div{height:100%;width:0;background:linear-gradient(90deg,#7c3aed,#06b6d4)}@media(max-width:600px){.social-wrap{padding-top:10px}.post-media{max-height:520px}.social-head{margin-bottom:12px}}</style></head>
+<body><div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div><main class="social-wrap"><header class="social-head"><div class="brand">📸 Class Social</div><span class="badge">🔒 ویژه اعضا</span></header>
+<section class="composer"><div class="composer-top"><div class="avatar" id="my-avatar">👤</div><div><b id="my-name">دانش‌آموز</b><div style="font-size:11px;color:#777">Share something with the class</div></div></div><textarea id="post-content" placeholder="چی شده؟ چی ساختی؟ چی می‌خوای با کلاس به اشتراک بذاری؟"></textarea><div class="tabs"><button class="tab active" data-type="text">📝 پست</button><button class="tab" data-type="image">🖼 عکس</button><button class="tab" data-type="video">🎬 ریلز</button></div><div class="media-picker" id="media-picker"><label class="file-label" for="media-input">＋ انتخاب فایل</label><input id="media-input" type="file" accept="image/*,video/*" hidden><span id="file-name" class="hint">برای ریلز و عکس، فایل انتخاب کن</span></div><img id="image-preview" class="preview" alt="پیش‌نمایش عکس"><video id="video-preview" class="preview" controls playsinline></video><div class="upload-progress" id="upload-progress"><div id="upload-progress-bar"></div></div><div class="composer-actions"><span class="hint" id="upload-status">حداکثر فایل: ۱ گیگابایت • ذخیره روی Google Drive</span><button class="btn btn-primary" id="post-btn">منتشر کن 🚀</button></div><p id="error-msg" class="error-text" style="display:none;margin:10px 0 0"></p></section><section id="posts-list"><div class="loading">در حال بارگذاری پست‌ها…</div></section></main>
+<script src="assets/js/api.js?v=20260914-drive1"></script><script>
+let currentUser=null,selectedType='text',selectedFile=null;const $=id=>document.getElementById(id);requirePageRole('social.html',['special','admin']).then(user=>{if(!user)return;currentUser=user;$('my-name').textContent=user.display_name||user.username;$('my-avatar').textContent=user.avatar_emoji||'👤';loadPosts();});
+document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{selectedType=tab.dataset.type;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));tab.classList.add('active');$('media-picker').classList.toggle('show',selectedType!=='text');clearPreview();$('media-input').accept=selectedType==='image'?'image/*':'video/*';}));
 $('media-input').addEventListener('change',e=>{selectedFile=e.target.files[0]||null;clearPreview(true);if(!selectedFile)return;$('file-name').textContent=`${selectedFile.name} — ${formatBytes(selectedFile.size)}`;if(selectedFile.size>1024*1024*1024){showError('حجم فایل بیشتر از ۱ گیگابایت است.');selectedFile=null;return;}const url=URL.createObjectURL(selectedFile);if(selectedType==='image'){$('image-preview').src=url;$('image-preview').classList.add('show')}else{$('video-preview').src=url;$('video-preview').classList.add('show')}});
-function clearPreview(keepFile=false){$('image-preview').classList.remove('show');$('video-preview').classList.remove('show');$('image-preview').src='';$('video-preview').src='';if(!keepFile){selectedFile=null;$('media-input').value='';$('file-name').textContent='برای ریلز و عکس، فایل انتخاب کن';}}
-function formatBytes(n){if(n<1024*1024)return Math.round(n/1024)+' KB';return (n/1024/1024/1024).toFixed(2)+' GB';}
-function showError(msg){$('error-msg').textContent=msg||'';$('error-msg').style.display=msg?'block':'none';}
-function escapeHtml(str){const d=document.createElement('div');d.textContent=String(str??'');return d.innerHTML;}
-function renderPost(p){
-  const media=p.media_url?(p.media_type==='video'?`<video class="post-media" controls playsinline preload="metadata" src="${escapeHtml(p.media_url)}"></video>`:`<img class="post-media" loading="lazy" src="${escapeHtml(p.media_url)}" alt="پست تصویری">`):'';
-  const caption=p.content?`<div class="post-caption">${escapeHtml(p.content)}</div>`:'';
-  return `<article class="post"><div class="post-head"><div class="avatar">${escapeHtml(p.avatar_emoji||'👤')}</div><div><div class="post-name">${escapeHtml(p.display_name||'دانش‌آموز')}</div><div class="post-time">عضو کلاس • ${escapeHtml(p.media_type==='video'?'🎬 ریلز':'پست')}</div></div></div>${media}${caption}</article>`;
-}
-async function loadPosts(){try{const data=await api.getSocialPosts();$('posts-list').innerHTML=(data.posts||[]).map(renderPost).join('')||'<div class="empty">هنوز چیزی منتشر نشده ✨<br>اولین پست کلاس رو تو بساز!</div>';}catch(e){$('posts-list').innerHTML=`<div class="empty">خطا در بارگذاری: ${escapeHtml(e.message)}</div>`;}}
-$('post-btn').addEventListener('click',async()=>{
-  showError('');const content=$('post-content').value.trim();if(!content&&!selectedFile){showError('متن یا فایل انتخاب کن.');return;}
-  if(selectedType==='image'&&selectedFile&&!selectedFile.type.startsWith('image/')){showError('برای پست عکس، فایل تصویری انتخاب کن.');return;}
-  if(selectedType==='video'&&selectedFile&&!selectedFile.type.startsWith('video/')){showError('برای ریلز، فایل ویدیویی انتخاب کن.');return;}
-  const btn=$('post-btn');btn.disabled=true;btn.textContent='در حال انتشار…';
-  try{let mediaUrl='',mediaType='';if(selectedFile){btn.textContent='در حال آپلود فایل…';const result=await api.uploadFile(selectedFile);mediaUrl=result.directLink||result.viewLink;mediaType=selectedType;}
-    await api.createSocialPost(content,mediaUrl,mediaType);$('post-content').value='';clearPreview();selectedType='text';document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.type==='text'));$('media-picker').classList.remove('show');await loadPosts();window.scrollTo({top:0,behavior:'smooth'});
-  }catch(e){showError(e.message);}finally{btn.disabled=false;btn.textContent='منتشر کن 🚀';}
-});
-</script>
-</body>
-</html>
+function clearPreview(keepFile=false){$('image-preview').classList.remove('show');$('video-preview').classList.remove('show');$('image-preview').src='';$('video-preview').src='';if(!keepFile){selectedFile=null;$('media-input').value='';$('file-name').textContent='برای ریلز و عکس، فایل انتخاب کن';}}function formatBytes(n){if(n<1024*1024)return Math.round(n/1024)+' KB';return(n/1024/1024/1024).toFixed(2)+' GB';}function showError(m){$('error-msg').textContent=m||'';$('error-msg').style.display=m?'block':'none';}function escapeHtml(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function renderPost(p){const media=p.media_url?(p.media_type==='video'?`<video class="post-media" controls playsinline preload="metadata" src="${escapeHtml(p.media_url)}"></video>`:`<img class="post-media" loading="lazy" src="${escapeHtml(p.media_url)}" alt="پست تصویری">`):'';const caption=p.content?`<div class="post-caption">${escapeHtml(p.content)}</div>`:'';return`<article class="post"><div class="post-head"><div class="avatar">${escapeHtml(p.avatar_emoji||'👤')}</div><div><div class="post-name">${escapeHtml(p.display_name||'دانش‌آموز')}</div><div class="post-time">عضو کلاس • ${escapeHtml(p.media_type==='video'?'🎬 ریلز':'پست')}</div></div></div>${media}${caption}</article>`;}
+async function loadPosts(){try{const d=await api.getSocialPosts();$('posts-list').innerHTML=(d.posts||[]).map(renderPost).join('')||'<div class="empty">هنوز چیزی منتشر نشده ✨<br>اولین پست کلاس رو تو بساز!</div>';}catch(e){$('posts-list').innerHTML=`<div class="empty">خطا در بارگذاری: ${escapeHtml(e.message)}</div>`;}}
+$('post-btn').addEventListener('click',async()=>{showError('');const content=$('post-content').value.trim();if(!content&&!selectedFile){showError('متن یا فایل انتخاب کن.');return;}if(selectedType==='image'&&selectedFile&&!selectedFile.type.startsWith('image/')){showError('برای پست عکس، فایل تصویری انتخاب کن.');return;}if(selectedType==='video'&&selectedFile&&!selectedFile.type.startsWith('video/')){showError('برای ریلز، فایل ویدیویی انتخاب کن.');return;}const btn=$('post-btn');btn.disabled=true;btn.textContent='در حال انتشار…';$('upload-progress').classList.toggle('show',!!selectedFile);try{let mediaUrl='',mediaType='';if(selectedFile){btn.textContent='در حال آپلود ریلز/عکس…';const r=await api.uploadFile(selectedFile,p=>{$('upload-progress-bar').style.width=p+'%';$('upload-status').textContent=`در حال آپلود مستقیم به Google Drive… ${p}%`;});mediaUrl=r.directLink||r.viewLink;mediaType=selectedType;}await api.createSocialPost(content,mediaUrl,mediaType);$('post-content').value='';clearPreview();selectedType='text';document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.type==='text'));$('media-picker').classList.remove('show');$('upload-status').textContent='منتشر شد ✓';await loadPosts();window.scrollTo({top:0,behavior:'smooth'});}catch(e){showError(e.message);}finally{btn.disabled=false;btn.textContent='منتشر کن 🚀';setTimeout(()=>{$('upload-progress').classList.remove('show');$('upload-progress-bar').style.width='0%';$('upload-status').textContent='حداکثر فایل: ۱ گیگابایت • ذخیره روی Google Drive';},1500);}});
+</script></body></html>
