@@ -4,11 +4,7 @@ async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('siteclass_auth_token');
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(API_BASE + path, {
-    credentials: 'include',
-    headers,
-    ...options,
-  });
+  const res = await fetch(API_BASE + path, { credentials: 'include', headers, ...options });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'خطای ناشناخته');
   return data;
@@ -16,15 +12,8 @@ async function apiRequest(path, options = {}) {
 
 const api = {
   register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
-  login: async (username, password) => {
-    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
-    if (data.token) localStorage.setItem('siteclass_auth_token', data.token);
-    return data;
-  },
-  logout: async () => {
-    try { await apiRequest('/logout.php', { method: 'POST' }); }
-    finally { localStorage.removeItem('siteclass_auth_token'); }
-  },
+  login: async (username, password) => { const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) }); if (data.token) localStorage.setItem('siteclass_auth_token', data.token); return data; },
+  logout: async () => { try { await apiRequest('/logout.php', { method: 'POST' }); } finally { localStorage.removeItem('siteclass_auth_token'); } },
   me: () => apiRequest('/me.php'),
   sendMessage: (payload) => apiRequest('/chat-send.php', { method: 'POST', body: JSON.stringify(payload) }),
   getGroupMessages: () => apiRequest('/chat-group.php'),
@@ -34,17 +23,7 @@ const api = {
   addSchedule: (payload) => apiRequest('/schedule-add.php', { method: 'POST', body: JSON.stringify(payload) }),
   getScheduleSettings: () => apiRequest('/schedule-settings-get.php'),
   setScheduleSettings: (lessons_per_day) => apiRequest('/schedule-settings-set.php', { method: 'POST', body: JSON.stringify({ lessons_per_day }) }),
-  uploadFile: async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const headers = {};
-    const token = localStorage.getItem('siteclass_auth_token');
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(API_BASE + '/upload.php', { method: 'POST', credentials: 'include', headers, body: formData });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'خطا در آپلود');
-    return data;
-  },
+  uploadFile: async (file) => { const formData = new FormData(); formData.append('file', file); const headers = {}; const token = localStorage.getItem('siteclass_auth_token'); if (token) headers.Authorization = `Bearer ${token}`; const res = await fetch(API_BASE + '/upload.php', { method: 'POST', credentials: 'include', headers, body: formData }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'خطا در آپلود'); return data; },
   getAllUploads: () => apiRequest('/uploads-list.php'),
   getOutings: () => apiRequest('/outings-list.php'),
   createOuting: (payload) => apiRequest('/outings-create.php', { method: 'POST', body: JSON.stringify(payload) }),
@@ -85,20 +64,14 @@ const api = {
   createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description }) }),
   addBugComment: (bug_id, content) => apiRequest('/bugs-comment.php', { method: 'POST', body: JSON.stringify({ bug_id, content }) }),
   askCodeHelp: (code, question) => apiRequest('/projects-code-help.php', { method: 'POST', body: JSON.stringify({ code, question }) }),
-  askProjectAI: (project_id, message) => apiRequest('/projects-ai-ask.php', { method: 'POST', body: JSON.stringify({ project_id, message })),
+  askProjectAI: (project_id, message) => apiRequest('/projects-ai-ask.php', { method: 'POST', body: JSON.stringify({ project_id, message }) }),
   getProjectCode: (project_id) => apiRequest(`/projects-code-get.php?project_id=${project_id}`),
   saveProjectCode: (project_id, code, language) => apiRequest('/projects-code-save.php', { method: 'POST', body: JSON.stringify({ project_id, code, language }) }),
 };
 
 function renderTopNav(user, activePage) {
   const baseLinks = [
-    { href: 'dashboard.html', label: '🏠 خانه' }, { href: 'chat.html', label: '💬 چت' },
-    { href: 'schedule.html', label: '📅 برنامه' }, { href: 'lessons.html', label: '📚 دروس' },
-    { href: 'notes.html', label: '📝 جزوه' }, { href: 'outings.html', label: '🌳 بیرون‌رفتن' },
-    { href: 'games.html', label: '🎮 سرگرمی' }, { href: 'uploads.html', label: '📁 آپلودها' },
-    { href: 'videos.html', label: '📺 ویدیوها' }, { href: 'projects.html', label: '🧩 تکلیف' },
-    { href: 'account.html', label: '👤 حساب من' }, { href: 'donate.html', label: '💛 دونیت' },
-    { href: 'bugs.html', label: '🛠 رفع اشکال' },
+    { href: 'dashboard.html', label: '🏠 خانه' }, { href: 'chat.html', label: '💬 چت' }, { href: 'schedule.html', label: '📅 برنامه' }, { href: 'lessons.html', label: '📚 دروس' }, { href: 'notes.html', label: '📝 جزوه' }, { href: 'outings.html', label: '🌳 بیرون‌رفتن' }, { href: 'games.html', label: '🎮 سرگرمی' }, { href: 'uploads.html', label: '📁 آپلودها' }, { href: 'videos.html', label: '📺 ویدیوها' }, { href: 'projects.html', label: '🧩 تکلیف' }, { href: 'account.html', label: '👤 حساب من' }, { href: 'donate.html', label: '💛 دونیت' }, { href: 'bugs.html', label: '🛠 رفع اشکال' },
   ];
   if (user.role === 'special' || user.role === 'admin') baseLinks.push({ href: 'social.html', label: '🔒 شبکهٔ اجتماعی' });
   if (user.role === 'admin') baseLinks.push({ href: 'admin.html', label: '🛡 پنل ادمین' });
@@ -107,21 +80,11 @@ function renderTopNav(user, activePage) {
   document.getElementById('nav-toggle').addEventListener('click', () => document.getElementById('nav-links').classList.toggle('open'));
 }
 
-async function handleLogout() {
-  await api.logout();
-  location.href = 'login.html';
-}
+async function handleLogout() { await api.logout(); location.href = 'login.html'; }
 
 async function requirePageLogin(activePage) {
-  try {
-    const data = await api.me();
-    renderTopNav(data.user, activePage);
-    return data.user;
-  } catch (e) {
-    localStorage.removeItem('siteclass_auth_token');
-    location.href = 'login.html';
-    return null;
-  }
+  try { const data = await api.me(); renderTopNav(data.user, activePage); return data.user; }
+  catch (e) { localStorage.removeItem('siteclass_auth_token'); location.href = 'login.html'; return null; }
 }
 
 async function requirePageRole(activePage, allowedRoles) {
