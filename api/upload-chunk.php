@@ -4,10 +4,10 @@ require_once __DIR__ . '/google-oauth.php';
 
 requireLogin();
 
-$uploadId = trim((string)($_GET['uploadId'] ?? ''));
-$start = isset($_GET['start']) ? (int)$_GET['start'] : -1;
-$end = isset($_GET['end']) ? (int)$_GET['end'] : -1;
-$total = isset($_GET['total']) ? (int)$_GET['total'] : -1;
+$uploadId = trim((string)($_POST['uploadId'] ?? ''));
+$start = isset($_POST['start']) ? (int)$_POST['start'] : -1;
+$end = isset($_POST['end']) ? (int)$_POST['end'] : -1;
+$total = isset($_POST['total']) ? (int)$_POST['total'] : -1;
 
 if (!preg_match('/^[a-f0-9]{48}$/', $uploadId)) jsonResponse(['error' => 'شناسه آپلود نامعتبره.'], 400);
 if ($start < 0 || $end < $start || $total <= 0 || $end >= $total) jsonResponse(['error' => 'بازه آپلود نامعتبره.'], 400);
@@ -28,13 +28,25 @@ if (!filter_var($sessionUrl, FILTER_VALIDATE_URL) || !str_starts_with($sessionUr
     jsonResponse(['error' => 'آدرس نشست Google Drive نامعتبره.'], 400);
 }
 
-$mime = (string)($session['mimeType'] ?? 'application/octet-stream');
+if (empty($_FILES['chunk']) || !isset($_FILES['chunk']['tmp_name']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
+    $uploadError = (int)($_FILES['chunk']['error'] ?? -1);
+    jsonResponse(['error' => 'بخش فایل به سرور نرسید. کد آپلود: ' . $uploadError], 400);
+}
+
+$tmp = $_FILES['chunk']['tmp_name'];
 $length = $end - $start + 1;
+$actualSize = (int)($_FILES['chunk']['size'] ?? 0);
+if ($actualSize !== $length) {
+    @unlink($tmp);
+    jsonResponse(['error' => 'اندازه بخش فایل درست نیست.'], 400);
+}
+
+$mime = (string)($session['mimeType'] ?? 'application/octet-stream');
 
 try {
     $accessToken = googleOAuthGetAccessToken();
-    $fp = fopen('php://input', 'rb');
-    if (!$fp) throw new Exception('ورودی فایل قابل خواندن نیست.');
+    $fp = fopen($tmp, 'rb');
+    if (!$fp) throw new Exception('بخش فایل قابل خواندن نیست.');
 
     $ch = curl_init($sessionUrl);
     curl_setopt_array($ch, [
@@ -59,6 +71,7 @@ try {
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     fclose($fp);
+    @unlink($tmp);
 
     $data = json_decode((string)$response, true);
     $detail = is_array($data) && !empty($data['error']['message']) ? $data['error']['message'] : trim((string)$response);
@@ -80,6 +93,8 @@ try {
 
     throw new Exception('Google Drive HTTP ' . $code . ($detail !== '' ? ' - ' . $detail : ''));
 } catch (Throwable $e) {
+    if (isset($fp) && is_resource($fp)) fclose($fp);
+    @unlink($tmp);
     error_log('[SITECLASS DRIVE] chunk exception: ' . $e->getMessage());
     jsonResponse(['error'=>'ارسال بخش فایل به Google Drive ناموفق بود: ' . $e->getMessage()], 502);
 }
