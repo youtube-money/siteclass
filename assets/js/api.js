@@ -15,14 +15,10 @@ async function apiRequest(path, options = {}) {
 function uploadDriveChunk(sessionUrl, file, start, end, onProgress, token) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('PUT', API_BASE + '/upload-chunk.php', true);
+    const params = new URLSearchParams({ uploadUrl: sessionUrl, start: String(start), end: String(end), total: String(file.size), mime: file.type || 'application/octet-stream' });
+    xhr.open('POST', `${API_BASE}/upload-chunk.php?${params.toString()}`, true);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.setRequestHeader('X-Drive-Upload-Url', sessionUrl);
-    xhr.setRequestHeader('X-Drive-Start', String(start));
-    xhr.setRequestHeader('X-Drive-End', String(end));
-    xhr.setRequestHeader('X-Drive-Total', String(file.size));
-    xhr.setRequestHeader('X-Drive-Mime', file.type || 'application/octet-stream');
     xhr.timeout = 15 * 60 * 1000;
     xhr.upload.onprogress = e => {
       if (e.lengthComputable && typeof onProgress === 'function') onProgress(e.loaded, end - start + 1);
