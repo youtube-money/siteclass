@@ -27,10 +27,10 @@ try {
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $metadata,
         CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer $accessToken",
+            'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json; charset=UTF-8',
-            "X-Upload-Content-Type: $mimeType",
-            "X-Upload-Content-Length: $size",
+            'X-Upload-Content-Type: ' . $mimeType,
+            'X-Upload-Content-Length: ' . $size,
         ],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADERFUNCTION => function ($curl, $header) use (&$sessionUrl) {
@@ -39,17 +39,32 @@ try {
         },
         CURLOPT_TIMEOUT => 30,
     ]);
-    $response = curl_exec($ch); $error = curl_error($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    if ($sessionUrl) {
-        $parts = parse_url($sessionUrl);
-        error_log('[SITECLASS DRIVE] upload session created: http=' . $code . ' host=' . ($parts['host'] ?? '') . ' path=' . ($parts['path'] ?? '') . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType);
-    } else {
-        error_log('[SITECLASS DRIVE] upload session failed: http=' . $code . ' curl=' . $error . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType . ' response=' . substr((string)$response, 0, 1000));
+    if ($response === false || $error || $code < 200 || $code >= 300 || !$sessionUrl) {
+        throw new Exception('نشست آپلود گوگل ساخته نشد: HTTP ' . $code . ' ' . $error . ' ' . $response);
     }
 
-    if ($response === false || $error || $code < 200 || $code >= 300 || !$sessionUrl) throw new Exception('نشست آپلود گوگل ساخته نشد: HTTP ' . $code . ' ' . $error . ' ' . $response);
-    jsonResponse(['success'=>true,'uploadUrl'=>$sessionUrl,'name'=>$name,'size'=>$size,'mimeType'=>$mimeType]);
+    $dir = dirname(__DIR__) . '/.sessions/drive-uploads';
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) throw new Exception('پوشه نشست آپلود ساخته نشد.');
+    @chmod($dir, 0700);
+    $uploadId = bin2hex(random_bytes(24));
+    $sessionFile = $dir . '/' . $uploadId . '.json';
+    $sessionData = [
+        'upload_url' => $sessionUrl,
+        'name' => $name,
+        'size' => $size,
+        'mimeType' => $mimeType,
+        'created_at' => time(),
+    ];
+    file_put_contents($sessionFile, json_encode($sessionData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($sessionFile, 0600);
+
+    error_log('[SITECLASS DRIVE] upload session created: http=' . $code . ' id=' . $uploadId . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType);
+    jsonResponse(['success'=>true,'uploadId'=>$uploadId,'name'=>$name,'size'=>$size,'mimeType'=>$mimeType]);
 } catch (Throwable $e) {
     error_log('[SITECLASS DRIVE] upload-session exception: ' . $e->getMessage());
     jsonResponse(['error'=>'شروع آپلود ناموفق بود: '.$e->getMessage()], 502);
