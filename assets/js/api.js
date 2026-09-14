@@ -15,17 +15,52 @@ async function apiRequest(path, options = {}) {
   return data;
 }
 
+async function uploadFileDirectToDrive(file, onProgress) {
+  if (!file || !file.size) throw new Error('فایل نامعتبره.');
+  const max = 1024 * 1024 * 1024;
+  if (file.size > max) throw new Error('حجم فایل بیشتر از ۱ گیگابایت است.');
+  const token = localStorage.getItem('siteclass_auth_token');
+  if (!token) throw new Error('نشست ورود منقضی شده؛ دوباره وارد شو.');
+
+  const startRes = await fetch(API_BASE + '/upload-session.php', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size })
+  });
+  const startText = await startRes.text();
+  let startData = {}; try { startData = startText ? JSON.parse(startText) : {}; } catch (_) { startData = { _raw: startText }; }
+  if (!startRes.ok || !startData.uploadUrl) throw new Error(startData.error || startData._raw || `شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
+
+  const driveResponse = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', startData.uploadUrl, true);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.timeout = 15 * 60 * 1000;
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable && typeof onProgress === 'function') onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onerror = () => reject(new Error('ارتباط مستقیم با Google Drive قطع شد. دوباره امتحان کن.'));
+    xhr.ontimeout = () => reject(new Error('آپلود بیشتر از زمان مجاز طول کشید.'));
+    xhr.onload = () => {
+      let data = {}; try { data = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300 && data.id) resolve(data);
+      else reject(new Error(data.error?.message || `آپلود Google Drive ناموفق بود (HTTP ${xhr.status})`));
+    };
+    xhr.send(file);
+  });
+
+  const finalize = await apiRequest('/upload-finalize.php', {
+    method: 'POST',
+    body: JSON.stringify({ fileId: driveResponse.id, filename: file.name, size: file.size, mimeType: file.type || 'application/octet-stream' })
+  });
+  if (typeof onProgress === 'function') onProgress(100);
+  return finalize;
+}
+
 const api = {
   register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
   login: async (username, password) => {
     const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
-    if (!data || !data.token) {
-      const responseDetails = data && data._raw ? data._raw : JSON.stringify(data || {});
-      console.error('SITECLASS LOGIN RESPONSE:', data);
-      throw new Error(`توکن ورود دریافت نشد. پاسخ سرور: ${responseDetails}`);
-    }
-    localStorage.setItem('siteclass_auth_token', data.token);
-    return data;
+    if (!data || !data.token) { const responseDetails = data && data._raw ? data._raw : JSON.stringify(data || {}); console.error('SITECLASS LOGIN RESPONSE:', data); throw new Error(`توکن ورود دریافت نشد. پاسخ سرور: ${responseDetails}`); }
+    localStorage.setItem('siteclass_auth_token', data.token); return data;
   },
   logout: async () => { try { await apiRequest('/logout.php', { method: 'POST' }); } finally { localStorage.removeItem('siteclass_auth_token'); } },
   me: () => apiRequest('/me.php'),
@@ -37,7 +72,7 @@ const api = {
   addSchedule: (payload) => apiRequest('/schedule-add.php', { method: 'POST', body: JSON.stringify(payload) }),
   getScheduleSettings: () => apiRequest('/schedule-settings-get.php'),
   setScheduleSettings: (lessons_per_day) => apiRequest('/schedule-settings-set.php', { method: 'POST', body: JSON.stringify({ lessons_per_day }) }),
-  uploadFile: async (file) => { const formData = new FormData(); formData.append('file', file); const headers = {}; const token = localStorage.getItem('siteclass_auth_token'); if (token) headers.Authorization = `Bearer ${token}`; const res = await fetch(API_BASE + '/upload.php', { method: 'POST', credentials: 'include', headers, body: formData }); const rawText = await res.text(); let data = {}; try { data = rawText ? JSON.parse(rawText) : {}; } catch (_) { data = { _raw: rawText }; } if (!res.ok) throw new Error(data.error || data._raw || `HTTP ${res.status}`); return data; },
+  uploadFile: (file, onProgress) => uploadFileDirectToDrive(file, onProgress),
   getAllUploads: () => apiRequest('/uploads-list.php'),
   getOutings: () => apiRequest('/outings-list.php'),
   createOuting: (payload) => apiRequest('/outings-create.php', { method: 'POST', body: JSON.stringify(payload) }),
@@ -69,7 +104,7 @@ const api = {
   getLessonContents: (subject_id) => apiRequest(`/lessons-contents-list.php?subject_id=${subject_id}`),
   addLessonContent: (payload) => apiRequest('/lessons-contents-create.php', { method: 'POST', body: JSON.stringify({ subject_id: payload.subject_id, content: payload.content }) }),
   getBooks: () => apiRequest('/notes-books-list.php'),
-  createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count }) }),
+  createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count })),
   getNotes: (chapter_id) => apiRequest(`/notes-list.php?chapter_id=${chapter_id}`),
   createNote: (payload) => apiRequest('/notes-create.php', { method: 'POST', body: JSON.stringify(payload) }),
   getSocialPosts: () => apiRequest('/social-posts-list.php'),
@@ -95,15 +130,5 @@ function renderTopNav(user, activePage) {
 }
 
 async function handleLogout() { await api.logout(); location.href = 'login.html'; }
-
-async function requirePageLogin(activePage) {
-  try { const data = await api.me(); renderTopNav(data.user, activePage); return data.user; }
-  catch (e) { localStorage.removeItem('siteclass_auth_token'); location.href = 'login.html'; return null; }
-}
-
-async function requirePageRole(activePage, allowedRoles) {
-  const user = await requirePageLogin(activePage);
-  if (!user) return null;
-  if (!allowedRoles.includes(user.role)) { location.href = 'dashboard.html'; return null; }
-  return user;
-}
+async function requirePageLogin(activePage) { try { const data = await api.me(); renderTopNav(data.user, activePage); return data.user; } catch (e) { localStorage.removeItem('siteclass_auth_token'); location.href = 'login.html'; return null; } }
+async function requirePageRole(activePage, allowedRoles) { const user = await requirePageLogin(activePage); if (!user) return null; if (!allowedRoles.includes(user.role)) { location.href = 'dashboard.html'; return null; } return user; }
