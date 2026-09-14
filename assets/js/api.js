@@ -18,7 +18,7 @@ async function apiRequest(path, options = {}) {
 const api = {
   register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
   login: async (username, password) => {
-    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, display_name: display_name || '', password }) });
+    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
     if (!data || !data.token) {
       const responseDetails = data && data._raw ? data._raw : JSON.stringify(data || {});
       console.error('SITECLASS LOGIN RESPONSE:', data);
