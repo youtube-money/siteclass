@@ -12,10 +12,10 @@ async function apiRequest(path, options = {}) {
   return data;
 }
 
-function uploadDriveChunk(sessionUrl, file, start, end, onProgress, token) {
+function uploadDriveChunk(uploadId, file, start, end, onProgress, token) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const params = new URLSearchParams({ uploadUrl: sessionUrl, start: String(start), end: String(end), total: String(file.size), mime: file.type || 'application/octet-stream' });
+    const params = new URLSearchParams({ uploadId, start: String(start), end: String(end), total: String(file.size) });
     xhr.open('POST', `${API_BASE}/upload-chunk.php?${params.toString()}`, true);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -41,22 +41,29 @@ async function uploadFileDirectToDrive(file, onProgress) {
   if (file.size > max) throw new Error('حجم فایل بیشتر از ۱ گیگابایت است.');
   const token = localStorage.getItem('siteclass_auth_token');
   if (!token) throw new Error('نشست ورود منقضی شده؛ دوباره وارد شو.');
-  const startRes = await fetch(API_BASE + '/upload-session.php', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify({name:file.name,mimeType:file.type||'application/octet-stream',size:file.size}) });
-  const startText = await startRes.text(); let startData={}; try{startData=startText?JSON.parse(startText):{};}catch(_){startData={_raw:startText};}
-  if(!startRes.ok||!startData.uploadUrl) throw new Error(startData.error||startData._raw||`شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
+
+  const startRes = await fetch(API_BASE + '/upload-session.php', {
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify({name:file.name,mimeType:file.type||'application/octet-stream',size:file.size})
+  });
+  const startText = await startRes.text(); let startData={};
+  try{startData=startText?JSON.parse(startText):{};}catch(_){startData={_raw:startText};}
+  if(!startRes.ok||!startData.uploadId) throw new Error(startData.error||startData._raw||`شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
 
   const chunkSize = 8 * 1024 * 1024;
   let driveFile = null;
   for (let start = 0; start < file.size; start += chunkSize) {
     const end = Math.min(file.size - 1, start + chunkSize - 1);
-    const result = await uploadDriveChunk(startData.uploadUrl, file, start, end, (loaded) => {
+    const result = await uploadDriveChunk(startData.uploadId, file, start, end, (loaded) => {
       if (typeof onProgress === 'function') onProgress(Math.min(99, Math.round(((start + loaded) / file.size) * 100)));
     }, token);
     if (result.complete) { driveFile = result.file; break; }
   }
   if (!driveFile || !driveFile.id) throw new Error('آپلود Google Drive کامل نشد.');
   const finalize = await apiRequest('/upload-finalize.php',{method:'POST',body:JSON.stringify({fileId:driveFile.id,filename:file.name,size:file.size,mimeType:file.type||'application/octet-stream'})});
-  if(typeof onProgress==='function')onProgress(100); return finalize;
+  if(typeof onProgress==='function')onProgress(100);
+  return finalize;
 }
 
 const api = {
