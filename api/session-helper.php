@@ -1,20 +1,32 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-// Central session bootstrap. Keep this deliberately simple and deterministic:
-// every request must use the same session name, cookie settings and writable store.
+// Central session bootstrap. Keep this deterministic: every request uses the
+// same cookie name, cookie settings and writable session store.
 function startSecureSession(): void {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
 
-    // Give this site its own cookie so another PHP app on the same domain/path
-    // cannot overwrite PHPSESSID.
+    // Isolate this site's session cookie from other PHP apps on the same domain.
     session_name('SITECLASSSESSID');
 
     $sessionsDir = dirname(__DIR__) . '/.sessions';
     if (!is_dir($sessionsDir)) {
         @mkdir($sessionsDir, 0700, true);
+    }
+
+    // Always protect the directory, including when cPanel created it during deployment.
+    if (is_dir($sessionsDir)) {
+        @chmod($sessionsDir, 0700);
+        $htaccessPath = $sessionsDir . '/.htaccess';
+        if (!file_exists($htaccessPath)) {
+            @file_put_contents($htaccessPath, "Require all denied\nDeny from all\n");
+        }
+        $indexPath = $sessionsDir . '/index.php';
+        if (!file_exists($indexPath)) {
+            @file_put_contents($indexPath, "<?php http_response_code(403); exit;\n");
+        }
     }
 
     // Prefer the site's private session directory. If the host refuses to make
@@ -25,6 +37,9 @@ function startSecureSession(): void {
         $fallbackDir = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'siteclass-sessions';
         if (!is_dir($fallbackDir)) {
             @mkdir($fallbackDir, 0700, true);
+        }
+        if (is_dir($fallbackDir)) {
+            @chmod($fallbackDir, 0700);
         }
         if (is_dir($fallbackDir) && is_writable($fallbackDir)) {
             session_save_path($fallbackDir);
@@ -50,9 +65,9 @@ function startSecureSession(): void {
         'secure' => $isHttps,
     ]);
 
-    // IMPORTANT: do not manually call session_id() from $_COOKIE here.
-    // PHP itself reads the cookie and starts the matching session. Manually
-    // restoring an old/foreign ID can make strict-mode sessions appear logged out.
+    // Do not manually pass $_COOKIE's session ID to session_id(). PHP already
+    // restores the cookie. Manual restoration can conflict with strict mode and
+    // make a valid login look logged out on the next request.
     session_start();
 }
 
