@@ -1,104 +1,65 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>سرگرمی — سایت کلاس</title>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/style.css">
 <style>
-  .game-card { padding: 16px; text-decoration: none; display: block; }
-  .game-card h3 { margin: 0 0 4px; }
-  .game-card p { margin: 0; font-size: 12px; color: var(--text-muted); }
-  .section-header { display: flex; justify-content: space-between; align-items: center; margin: 32px 0 16px; }
+main{max-width:900px}.hero{padding:26px 22px;margin-bottom:24px;text-align:center}.hero h1{margin:0 0 8px}.hero p{margin:0;color:var(--text-muted)}
+.games-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.game-card{padding:20px;text-decoration:none;display:block;transition:transform .2s,box-shadow .2s}.game-card:hover{transform:translateY(-4px);box-shadow:0 18px 45px rgba(0,0,0,.22)}.game-icon{font-size:42px;margin-bottom:10px}.game-card h3{margin:0 0 5px}.game-card p{margin:0;color:var(--text-muted);font-size:12px}.play{display:inline-block;margin-top:14px;font-size:12px;color:var(--violet-400)}
+.section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:34px 0 14px}.section-header h2{margin:0}.boards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.board{padding:16px}.board h3{margin:0 0 12px}.board table{width:100%;border-collapse:collapse;font-size:12px}.board td{padding:7px 3px;border-bottom:1px solid rgba(255,255,255,.06)}.board td:last-child{text-align:left;font-weight:800;color:var(--violet-400)}.empty{color:var(--text-muted);font-size:12px}.rank{width:24px;color:var(--text-disabled)}
+.student-card{padding:16px;text-decoration:none;display:block}.student-card h3{margin:0 0 5px}.student-card p{margin:3px 0;color:var(--text-muted);font-size:12px}
+.prompt{padding:18px}.prompt pre{max-height:260px;overflow:auto;white-space:pre-wrap;font:11.5px 'JetBrains Mono',monospace;direction:ltr;text-align:left;color:var(--text-secondary);margin:0}
+@media(max-width:760px){.games-grid,.boards{grid-template-columns:1fr}.section-header{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
 <div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<main>
+  <div class="glass hero"><h1>🎮 بخش سرگرمی</h1><p>بازی کن، رکورد بزن و با بقیه اعضای کلاس رقابت کن!</p></div>
 
-<main style="max-width:720px;">
-  <h1>بخش سرگرمی</h1>
-
-  <h2>بازی‌های آماده</h2>
-  <div class="grid">
-    <a href="games/snake.html" target="_blank" class="glass game-card"><h3>🐍 مار</h3><p>کلاسیک با کلیدهای جهت‌دار</p></a>
-    <a href="games/tetris.html" target="_blank" class="glass game-card"><h3>🧱 تتریس</h3><p>قطعات رو بچین و خط پاک کن</p></a>
-    <a href="games/number-guess.html" target="_blank" class="glass game-card"><h3>🎯 حدس عدد</h3><p>عددی بین ۱ تا ۱۰۰</p></a>
+  <h2>🔥 بازی‌های آماده</h2>
+  <div class="games-grid">
+    <a href="games/snake.html" target="_blank" class="glass game-card"><div class="game-icon">🐍</div><h3>مار کلاسیک</h3><p>زمین بزرگ‌تر، کنترل روان و ظاهر واقعی‌تر مار.</p><span class="play">بازی کردن ←</span></a>
+    <a href="games/tetris.html" target="_blank" class="glass game-card"><div class="game-icon">🧱</div><h3>تتریس</h3><p>قطعات را بچین و خط‌ها را پاک کن.</p><span class="play">بازی کردن ←</span></a>
+    <a href="games/number-guess.html" target="_blank" class="glass game-card"><div class="game-icon">🎯</div><h3>حدس عدد</h3><p>عدد مخفی بین ۱ تا ۱۰۰ را پیدا کن.</p><span class="play">بازی کردن ←</span></a>
   </div>
 
-  <div class="section-header">
-    <h2 style="margin:0;">بازی‌های ساختهٔ بچه‌ها</h2>
-    <a href="games-submit.html"><button class="btn btn-primary">+ بازی خودت رو اضافه کن</button></a>
-  </div>
-  <div class="grid" id="student-games-list"></div>
-
-  <h2 style="margin-top:32px;">می‌خوای با AI بازی خودتو بسازی؟</h2>
-  <div class="glass" style="padding:16px 20px;">
-    <p style="font-size:13px; color:var(--text-secondary); margin-top:0;">این پرامپت رو کپی کن و به هر ابزار AI بده تا برات بازی با کیفیت خوب بسازه:</p>
-    <pre id="ai-game-prompt" style="white-space:pre-wrap; font-family:'JetBrains Mono',monospace; font-size:11.5px; direction:ltr; text-align:left; margin:0; color:var(--text-secondary);">Create a single-file HTML/CSS/JS browser game (no external libraries).
-
-Visual requirements to match our class site's quality bar:
-- High-resolution canvas rendering (crisp on retina displays, no blurry pixels)
-- Vibrant neon color palette (violet #8b5cf6, cyan #06b6d4, emerald #10b981 — pick 2-3, not all)
-- Smooth animations (60fps, subtle glow/particle effects on key actions like scoring)
-- Clean modern UI: score display, game-over screen with restart button
-- Fully self-contained in one .html file, mobile-friendly (touch controls if relevant)
-
-IMPORTANT — this game will run inside a sandboxed iframe with NO access to
-cookies, localStorage, sessionStorage, or the network (no fetch/XHR will work
-and will silently fail). Do NOT use any of those.
-
-To report the final score to the parent site when the game ends, call exactly this
-(replace SCORE_VALUE with the numeric final score):
-  window.parent.postMessage({ type: 'game-score', score: SCORE_VALUE }, '*');
-
-Call it once, right when the game-over screen appears.
-
-Output only the complete HTML file.</pre>
-    <button class="btn btn-ghost" style="margin-top:10px;" onclick="copyGamePrompt()">کپی پرامپت</button>
+  <div class="section-header"><h2>🏆 رکوردهای برتر هر بازی</h2><span style="font-size:12px;color:var(--text-muted)">فقط بهترین رکورد هر نفر نمایش داده می‌شود</span></div>
+  <div class="boards">
+    <div class="glass board"><h3>🐍 مار</h3><table><tbody id="snake-board"></tbody></table></div>
+    <div class="glass board"><h3>🧱 تتریس</h3><table><tbody id="tetris-board"></tbody></table></div>
+    <div class="glass board"><h3>🎯 حدس عدد</h3><table><tbody id="guess-board"></tbody></table></div>
   </div>
 
-  <h2 style="margin-top:32px;">🏆 لیدربورد کلی</h2>
-  <div class="glass" style="padding:16px 20px;">
-    <table style="width:100%; font-size:13px;">
-      <thead><tr><th style="text-align:right; padding-bottom:8px;">بازیکن</th><th style="text-align:right;">بازی</th><th style="text-align:right;">امتیاز</th></tr></thead>
-      <tbody id="leaderboard-body"></tbody>
-    </table>
-  </div>
+  <div class="section-header"><h2>✨ بازی‌های ساخته‌شده توسط اعضا</h2><a href="games-submit.html" class="btn btn-primary">+ بازی خودم را اضافه کنم</a></div>
+  <div class="games-grid" id="student-games-list"></div>
+
+  <div class="section-header"><h2>🤖 ساخت بازی با AI</h2></div>
+  <div class="glass prompt"><p style="margin-top:0;color:var(--text-secondary);font-size:13px">این پرامپت را به ابزار AI بده و فایل HTML بازی را داخل سایت اضافه کن:</p>
+  <pre id="ai-game-prompt">Create a polished single-file HTML/CSS/JS browser game with no external libraries.
+
+Requirements:
+- Modern premium visual design matching a dark glassmorphism class website.
+- Responsive desktop/mobile layout with touch controls when useful.
+- Smooth animations, readable score, clear game-over/restart screen.
+- Do not use fetch, XHR, localStorage, sessionStorage, cookies, or external APIs.
+- The game runs inside a sandboxed iframe.
+- When the game ends, report the final numeric score exactly once with:
+window.parent.postMessage({ type: 'game-score', score: SCORE_VALUE }, '*');
+- Output only the complete HTML file.</pre>
+  <button class="btn btn-ghost" style="margin-top:10px" id="copy-prompt">کپی پرامپت</button></div>
 </main>
-
 <script src="assets/js/api.js"></script>
 <script>
-  requirePageLogin('games.html').then((user) => { if (user) { loadGames(); loadLeaderboard(); } });
-
-  async function loadLeaderboard() {
-    const data = await api.getLeaderboard();
-    document.getElementById('leaderboard-body').innerHTML = data.leaderboard
-      .map((r) => `<tr><td style="padding:6px 0;">${r.display_name}</td><td>${r.game_key}</td><td>${r.score}</td></tr>`)
-      .join('') || '<tr><td colspan="3" style="color:var(--text-disabled); padding:10px 0;">هنوز امتیازی ثبت نشده.</td></tr>';
-  }
-
-  function copyGamePrompt() {
-    navigator.clipboard.writeText(document.getElementById('ai-game-prompt').textContent);
-    event.target.textContent = 'کپی شد ✓';
-    setTimeout(() => event.target.textContent = 'کپی پرامپت', 1500);
-  }
-
-  async function loadGames() {
-    const data = await api.getStudentGames();
-    const container = document.getElementById('student-games-list');
-    if (data.games.length === 0) {
-      container.innerHTML = '<p style="color:var(--text-muted)">هنوز بازی‌ای اضافه نشده.</p>';
-      return;
-    }
-    container.innerHTML = data.games.map((g) => `
-      <a href="games-play.html?id=${g.id}" class="glass game-card">
-        <h3>${g.title}</h3>
-        ${g.description ? `<p>${g.description}</p>` : ''}
-        <p style="margin-top:4px;">ساختهٔ ${g.display_name}</p>
-      </a>
-    `).join('');
-  }
+requirePageLogin('games.html').then(user=>{if(user){loadGames();loadBoards()}});
+function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+async function loadBoards(){
+  const games=[['snake','snake-board'],['tetris','tetris-board'],['number-guess','guess-board']];
+  await Promise.all(games.map(async([key,id])=>{const body=document.getElementById(id);try{const data=await api.getLeaderboard(key);body.innerHTML=data.leaderboard.map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(r.display_name)}</td><td>${Number(r.score)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">هنوز رکوردی ثبت نشده.</td></tr>'}catch(e){body.innerHTML='<tr><td colspan="3" class="empty">خطا در دریافت رکوردها</td></tr>'}}))
+}
+async function loadGames(){const c=document.getElementById('student-games-list');try{const data=await api.getStudentGames();if(!data.games.length){c.innerHTML='<p class="empty">هنوز بازی‌ای اضافه نشده.</p>';return}c.innerHTML=data.games.map(g=>`<a href="games-play.html?id=${encodeURIComponent(g.id)}" class="glass student-card"><h3>🎮 ${esc(g.title)}</h3>${g.description?`<p>${esc(g.description)}</p>`:''}<p>ساختهٔ ${esc(g.display_name)}</p><span class="play">اجرا ←</span></a>`).join('')}catch(e){c.innerHTML='<p class="empty">خطا در دریافت بازی‌ها.</p>'}}
+document.getElementById('copy-prompt').addEventListener('click',async e=>{try{await navigator.clipboard.writeText(document.getElementById('ai-game-prompt').textContent);e.target.textContent='کپی شد ✓';setTimeout(()=>e.target.textContent='کپی پرامپت',1500)}catch(_){}});
 </script>
 </body>
 </html>
