@@ -40,8 +40,17 @@ try {
         CURLOPT_TIMEOUT => 30,
     ]);
     $response = curl_exec($ch); $error = curl_error($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+
+    if ($sessionUrl) {
+        $parts = parse_url($sessionUrl);
+        error_log('[SITECLASS DRIVE] upload session created: http=' . $code . ' host=' . ($parts['host'] ?? '') . ' path=' . ($parts['path'] ?? '') . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType);
+    } else {
+        error_log('[SITECLASS DRIVE] upload session failed: http=' . $code . ' curl=' . $error . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType . ' response=' . substr((string)$response, 0, 1000));
+    }
+
     if ($response === false || $error || $code < 200 || $code >= 300 || !$sessionUrl) throw new Exception('نشست آپلود گوگل ساخته نشد: HTTP ' . $code . ' ' . $error . ' ' . $response);
     jsonResponse(['success'=>true,'uploadUrl'=>$sessionUrl,'name'=>$name,'size'=>$size,'mimeType'=>$mimeType]);
 } catch (Throwable $e) {
+    error_log('[SITECLASS DRIVE] upload-session exception: ' . $e->getMessage());
     jsonResponse(['error'=>'شروع آپلود ناموفق بود: '.$e->getMessage()], 502);
 }
