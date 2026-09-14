@@ -1,61 +1,19 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>آپلودها — سایت کلاس</title>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
+<style>.upload-box{padding:22px;border-radius:20px}.progress{height:10px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:14px;display:none}.progress.show{display:block}.progress>div{height:100%;width:0;background:linear-gradient(90deg,#7c3aed,#06b6d4);transition:width .15s}.upload-status{font-size:13px;color:var(--text-muted);margin-top:10px}</style>
 </head>
-<body>
-<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
-
-<main style="max-width:700px;">
-  <h1>آپلود فایل</h1>
-  <p style="color:var(--text-muted); font-size:14px;">فایل‌ها (عکس، جزوه، ویدیوی کوتاه) روی گوگل‌درایو کلاس ذخیره می‌شن.</p>
-
-  <div class="glass" style="padding:20px; margin-bottom:24px;">
-    <input type="file" id="file-input">
-    <button class="btn btn-primary" id="upload-btn" style="margin-inline-start:10px;">آپلود کن</button>
-    <p class="error-text" id="error-msg" style="display:none; margin-top:10px;"></p>
-  </div>
-
-  <h3>فایل‌های آپلودشده</h3>
-  <ul id="uploads-list" style="padding-inline-start:20px;"></ul>
-</main>
-
-<script src="assets/js/api.js"></script>
-<script>
-  requirePageLogin('uploads.html').then((user) => { if (user) loadUploads(); });
-
-  async function loadUploads() {
-    const data = await api.getAllUploads();
-    document.getElementById('uploads-list').innerHTML = data.uploads
-      .map((u) => `<li style="margin-bottom:6px;"><a href="${u.drive_view_link}" target="_blank">${u.filename}</a>
-        <span style="color:var(--text-muted); font-size:12px;"> — ${u.display_name}</span></li>`)
-      .join('') || '<p style="color:var(--text-muted)">هنوز فایلی آپلود نشده.</p>';
-  }
-
-  document.getElementById('upload-btn').addEventListener('click', async () => {
-    const file = document.getElementById('file-input').files[0];
-    if (!file) return;
-    const btn = document.getElementById('upload-btn');
-    const errorEl = document.getElementById('error-msg');
-    errorEl.style.display = 'none';
-    btn.disabled = true;
-    btn.textContent = 'در حال آپلود...';
-    try {
-      await api.uploadFile(file);
-      document.getElementById('file-input').value = '';
-      await loadUploads();
-    } catch (e) {
-      errorEl.textContent = e.message;
-      errorEl.style.display = 'block';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'آپلود کن';
-    }
-  });
-</script>
-</body>
-</html>
+<body><div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<main style="max-width:700px"><h1>آپلود فایل</h1><p style="color:var(--text-muted);font-size:14px">فایل‌های سنگین مستقیم به Google Drive کلاس می‌روند؛ روی فضای هاست ذخیره نمی‌شوند.</p>
+<div class="glass upload-box"><input type="file" id="file-input"><button class="btn btn-primary" id="upload-btn" style="margin-inline-start:10px">آپلود کن</button><div class="progress" id="progress"><div id="progress-bar"></div></div><div class="upload-status" id="status"></div><p class="error-text" id="error-msg" style="display:none;margin-top:10px"></p></div>
+<h3>فایل‌های آپلودشده</h3><ul id="uploads-list" style="padding-inline-start:20px"></ul></main>
+<script src="assets/js/api.js?v=20260914-drive1"></script><script>
+requirePageLogin('uploads.html').then(user=>{if(user)loadUploads();});
+async function loadUploads(){try{const data=await api.getAllUploads();document.getElementById('uploads-list').innerHTML=(data.uploads||[]).map(u=>`<li style="margin-bottom:7px"><a href="${u.drive_view_link}" target="_blank" rel="noopener">${u.filename}</a><span style="color:var(--text-muted);font-size:12px"> — ${u.display_name}</span></li>`).join('')||'<p style="color:var(--text-muted)">هنوز فایلی آپلود نشده.</p>';}catch(e){document.getElementById('uploads-list').innerHTML=`<p class="error-text">${escapeHtml(e.message)}</p>`;}}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+document.getElementById('upload-btn').addEventListener('click',async()=>{const file=document.getElementById('file-input').files[0];if(!file)return;const btn=document.getElementById('upload-btn'),err=document.getElementById('error-msg'),status=document.getElementById('status'),progress=document.getElementById('progress'),bar=document.getElementById('progress-bar');err.style.display='none';btn.disabled=true;progress.classList.add('show');bar.style.width='0%';status.textContent='در حال اتصال مستقیم به Google Drive…';try{await api.uploadFile(file,p=>{bar.style.width=p+'%';status.textContent=`در حال آپلود به Google Drive… ${p}%`;});status.textContent='آپلود با موفقیت انجام شد ✓';document.getElementById('file-input').value='';await loadUploads();}catch(e){err.textContent=e.message;err.style.display='block';status.textContent='آپلود ناموفق بود.';}finally{btn.disabled=false;btn.textContent='آپلود کن';setTimeout(()=>{progress.classList.remove('show');},1200);}});
+</script></body></html>
