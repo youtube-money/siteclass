@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/session-helper.php';
+require_once __DIR__ . '/google-oauth.php';
 
 requireLogin();
 
@@ -18,6 +19,7 @@ if ($start < 0 || $end < $start || $total <= 0 || $end >= $total) {
 $length = $end - $start + 1;
 
 try {
+    $accessToken = googleOAuthGetAccessToken();
     $fp = fopen('php://input', 'rb');
     if (!$fp) throw new Exception('ورودی فایل قابل خواندن نیست.');
 
@@ -28,6 +30,7 @@ try {
         CURLOPT_INFILE => $fp,
         CURLOPT_INFILESIZE => $length,
         CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $accessToken,
             'Content-Length: ' . $length,
             'Content-Type: ' . $mime,
             'Content-Range: bytes ' . $start . '-' . $end . '/' . $total,
@@ -58,7 +61,8 @@ try {
         jsonResponse(['success'=>true,'complete'=>true,'file'=>$data]);
     }
 
-    throw new Exception('Google Drive HTTP ' . $code . ' ' . $response);
+    $detail = is_array($data) && !empty($data['error']['message']) ? $data['error']['message'] : trim((string)$response);
+    throw new Exception('Google Drive HTTP ' . $code . ($detail !== '' ? ' - ' . $detail : ''));
 } catch (Throwable $e) {
     jsonResponse(['error'=>'ارسال بخش فایل به Google Drive ناموفق بود: ' . $e->getMessage()], 502);
 }
