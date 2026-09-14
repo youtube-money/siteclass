@@ -1,10 +1,9 @@
 const API_BASE = '/api';
 
 async function apiRequest(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const token = localStorage.getItem('siteclass_auth_token');
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
-
   const res = await fetch(API_BASE + path, {
     credentials: 'include',
     headers,
@@ -16,20 +15,16 @@ async function apiRequest(path, options = {}) {
 }
 
 const api = {
-  register: (username, display_name, password) =>
-    apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
-
+  register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
   login: async (username, password) => {
     const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
     if (data.token) localStorage.setItem('siteclass_auth_token', data.token);
     return data;
   },
-
   logout: async () => {
     try { await apiRequest('/logout.php', { method: 'POST' }); }
     finally { localStorage.removeItem('siteclass_auth_token'); }
   },
-
   me: () => apiRequest('/me.php'),
   sendMessage: (payload) => apiRequest('/chat-send.php', { method: 'POST', body: JSON.stringify(payload) }),
   getGroupMessages: () => apiRequest('/chat-group.php'),
@@ -72,27 +67,27 @@ const api = {
   getProfile: () => apiRequest('/profile-get.php'),
   updateProfile: (payload) => apiRequest('/profile-update.php', { method: 'POST', body: JSON.stringify(payload) }),
   getAllUsers: () => apiRequest('/admin-users-list.php'),
-  setUserRole: (user_id, role) => apiRequest('/admin-users-set-role.php', { method: 'POST', body: JSON.stringify({ user_id, role })),
+  setUserRole: (user_id, role) => apiRequest('/admin-users-set-role.php', { method: 'POST', body: JSON.stringify({ user_id, role }) }),
   getSiteApiKeys: () => apiRequest('/admin-api-keys-list.php'),
   saveSiteApiKey: (payload) => apiRequest('/admin-api-keys-save.php', { method: 'POST', body: JSON.stringify(payload) }),
-  setSharedMemory: (enabled) => apiRequest('/admin-api-keys-shared-memory.php', { method: 'POST', body: JSON.stringify({ enabled })),
+  setSharedMemory: (enabled) => apiRequest('/admin-api-keys-shared-memory.php', { method: 'POST', body: JSON.stringify({ enabled }) }),
   getLessonSubjects: () => apiRequest('/lessons-subjects-list.php'),
-  createLessonSubject: (name) => apiRequest('/lessons-subjects-create.php', { method: 'POST', body: JSON.stringify({ name })),
+  createLessonSubject: (name) => apiRequest('/lessons-subjects-create.php', { method: 'POST', body: JSON.stringify({ name }) }),
   getLessonContents: (subject_id) => apiRequest(`/lessons-contents-list.php?subject_id=${subject_id}`),
   addLessonContent: (payload) => apiRequest('/lessons-contents-create.php', { method: 'POST', body: JSON.stringify(payload) }),
   getBooks: () => apiRequest('/notes-books-list.php'),
-  createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count })),
+  createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count }) }),
   getNotes: (chapter_id) => apiRequest(`/notes-list.php?chapter_id=${chapter_id}`),
   createNote: (payload) => apiRequest('/notes-create.php', { method: 'POST', body: JSON.stringify(payload) }),
   getSocialPosts: () => apiRequest('/social-posts-list.php'),
-  createSocialPost: (content) => apiRequest('/social-posts-create.php', { method: 'POST', body: JSON.stringify({ content })),
+  createSocialPost: (content) => apiRequest('/social-posts-create.php', { method: 'POST', body: JSON.stringify({ content }) }),
   getBugs: () => apiRequest('/bugs-list.php'),
-  createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description })),
-  addBugComment: (bug_id, content) => apiRequest('/bugs-comment.php', { method: 'POST', body: JSON.stringify({ bug_id, content })),
-  askCodeHelp: (code, question) => apiRequest('/projects-code-help.php', { method: 'POST', body: JSON.stringify({ code, question })),
+  createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description }) }),
+  addBugComment: (bug_id, content) => apiRequest('/bugs-comment.php', { method: 'POST', body: JSON.stringify({ bug_id, content }) }),
+  askCodeHelp: (code, question) => apiRequest('/projects-code-help.php', { method: 'POST', body: JSON.stringify({ code, question }) }),
   askProjectAI: (project_id, message) => apiRequest('/projects-ai-ask.php', { method: 'POST', body: JSON.stringify({ project_id, message })),
   getProjectCode: (project_id) => apiRequest(`/projects-code-get.php?project_id=${project_id}`),
-  saveProjectCode: (project_id, code, language) => apiRequest('/projects-code-save.php', { method: 'POST', body: JSON.stringify({ project_id, code, language })),
+  saveProjectCode: (project_id, code, language) => apiRequest('/projects-code-save.php', { method: 'POST', body: JSON.stringify({ project_id, code, language }) }),
 };
 
 function renderTopNav(user, activePage) {
