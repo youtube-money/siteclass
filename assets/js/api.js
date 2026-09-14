@@ -5,14 +5,28 @@ async function apiRequest(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(API_BASE + path, { credentials: 'include', headers, ...options });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'خطای ناشناخته');
+  const rawText = await res.text();
+  let data = {};
+  try { data = rawText ? JSON.parse(rawText) : {}; } catch (_) { data = { _raw: rawText }; }
+  if (!res.ok) {
+    const detail = data.error || data._raw || `HTTP ${res.status}`;
+    throw new Error(`${detail} (HTTP ${res.status})`);
+  }
   return data;
 }
 
 const api = {
   register: (username, display_name, password) => apiRequest('/register.php', { method: 'POST', body: JSON.stringify({ username, display_name, password }) }),
-  login: async (username, password) => { const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) }); if (data.token) localStorage.setItem('siteclass_auth_token', data.token); return data; },
+  login: async (username, password) => {
+    const data = await apiRequest('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (!data || !data.token) {
+      const responseDetails = data && data._raw ? data._raw : JSON.stringify(data || {});
+      console.error('SITECLASS LOGIN RESPONSE:', data);
+      throw new Error(`توکن ورود دریافت نشد. پاسخ سرور: ${responseDetails}`);
+    }
+    localStorage.setItem('siteclass_auth_token', data.token);
+    return data;
+  },
   logout: async () => { try { await apiRequest('/logout.php', { method: 'POST' }); } finally { localStorage.removeItem('siteclass_auth_token'); } },
   me: () => apiRequest('/me.php'),
   sendMessage: (payload) => apiRequest('/chat-send.php', { method: 'POST', body: JSON.stringify(payload) }),
@@ -23,7 +37,7 @@ const api = {
   addSchedule: (payload) => apiRequest('/schedule-add.php', { method: 'POST', body: JSON.stringify(payload) }),
   getScheduleSettings: () => apiRequest('/schedule-settings-get.php'),
   setScheduleSettings: (lessons_per_day) => apiRequest('/schedule-settings-set.php', { method: 'POST', body: JSON.stringify({ lessons_per_day }) }),
-  uploadFile: async (file) => { const formData = new FormData(); formData.append('file', file); const headers = {}; const token = localStorage.getItem('siteclass_auth_token'); if (token) headers.Authorization = `Bearer ${token}`; const res = await fetch(API_BASE + '/upload.php', { method: 'POST', credentials: 'include', headers, body: formData }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'خطا در آپلود'); return data; },
+  uploadFile: async (file) => { const formData = new FormData(); formData.append('file', file); const headers = {}; const token = localStorage.getItem('siteclass_auth_token'); if (token) headers.Authorization = `Bearer ${token}`; const res = await fetch(API_BASE + '/upload.php', { method: 'POST', credentials: 'include', headers, body: formData }); const rawText = await res.text(); let data = {}; try { data = rawText ? JSON.parse(rawText) : {}; } catch (_) { data = { _raw: rawText }; } if (!res.ok) throw new Error(data.error || data._raw || `HTTP ${res.status}`); return data; },
   getAllUploads: () => apiRequest('/uploads-list.php'),
   getOutings: () => apiRequest('/outings-list.php'),
   createOuting: (payload) => apiRequest('/outings-create.php', { method: 'POST', body: JSON.stringify(payload) }),
@@ -57,11 +71,11 @@ const api = {
   getBooks: () => apiRequest('/notes-books-list.php'),
   createBook: (title, chapter_count) => apiRequest('/notes-books-create.php', { method: 'POST', body: JSON.stringify({ title, chapter_count }) }),
   getNotes: (chapter_id) => apiRequest(`/notes-list.php?chapter_id=${chapter_id}`),
-  createNote: (payload) => apiRequest('/notes-create.php', { method: 'POST', body: JSON.stringify(payload) }),
+  createNote: (payload) => apiRequest('/notes-create.php', { method: 'POST', body: JSON.stringify({ payload: { title, chapter_count } }) }),
   getSocialPosts: () => apiRequest('/social-posts-list.php'),
   createSocialPost: (content) => apiRequest('/social-posts-create.php', { method: 'POST', body: JSON.stringify({ content }) }),
   getBugs: () => apiRequest('/bugs-list.php'),
-  createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description }) }),
+  createBug: (title, description) => apiRequest('/bugs-create.php', { method: 'POST', body: JSON.stringify({ title, description })),
   addBugComment: (bug_id, content) => apiRequest('/bugs-comment.php', { method: 'POST', body: JSON.stringify({ bug_id, content }) }),
   askCodeHelp: (code, question) => apiRequest('/projects-code-help.php', { method: 'POST', body: JSON.stringify({ code, question }) }),
   askProjectAI: (project_id, message) => apiRequest('/projects-ai-ask.php', { method: 'POST', body: JSON.stringify({ project_id, message }) }),
