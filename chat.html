@@ -28,7 +28,7 @@
         <button class="btn btn-ghost" id="voice-btn" title="پیام صوتی">🎙</button>
         <input type="file" id="img-input" accept="image/*" style="display:none">
       </div>
-      <p id="sending-note" style="font-size:12px; color:var(--text-muted); display:none;">در حال ارسال...</p>
+      <p id="sending-note" style="font-size:12px; color:var(--text-muted); display:none;"></p>
     </div>
   </div>
 </main>
@@ -43,16 +43,20 @@
   requirePageLogin('chat.html').then(async (user) => {
     if (!user) return;
     currentUser = user;
-    const contactsData = await api.getContacts();
-    renderContacts(contactsData.contacts);
-    startPolling();
+    try {
+      const contactsData = await api.getContacts();
+      renderContacts(contactsData.contacts || []);
+      startPolling();
+    } catch (e) {
+      showError(e.message);
+    }
   });
 
   function renderContacts(contacts) {
     const el = document.getElementById('contacts-list');
-    el.innerHTML = contacts
-      .map((c) => `<button data-id="${c.id}" data-name="${c.display_name}">${c.display_name}</button>`)
-      .join('');
+    el.innerHTML = contacts.map((c) =>
+      `<button data-id="${c.id}" data-name="${escapeHtml(c.display_name)}">${escapeHtml(c.display_name)}</button>`
+    ).join('');
     el.querySelectorAll('button').forEach((btn) => {
       btn.addEventListener('click', () => switchToPrivate(Number(btn.dataset.id), btn.dataset.name));
     });
@@ -82,52 +86,69 @@
 
   async function loadMessages() {
     try {
-      const data = mode === 'group' ? await api.getGroupMessages() : await api.getPrivateMessages(activeContactId);
-      renderMessages(data.messages);
+      const data = mode === 'group'
+        ? await api.getGroupMessages()
+        : await api.getPrivateMessages(activeContactId);
+      renderMessages(data.messages || []);
     } catch (e) {
-      // مخاطب هنوز انتخاب نشده یا خطای موقت — نادیده می‌گیریم
+      showError(e.message);
     }
   }
 
   function renderMessages(messages) {
     const el = document.getElementById('messages');
-    el.innerHTML = messages
-      .map((m) => {
-        const mine = Number(m.sender_id) === currentUser.id;
-        const mediaHtml =
-          m.media_type === 'image' && m.media_url
-            ? `<img src="${m.media_url}" style="max-width:240px;border-radius:10px;display:block;margin-bottom:4px;">`
-            : m.media_type === 'audio' && m.media_url
-            ? `<audio controls src="${m.media_url}" style="margin-bottom:4px;"></audio>`
-            : '';
-        return `<div class="msg ${mine ? 'mine' : 'theirs'}">
-          <div class="sender">${m.display_name}</div>
-          <div class="bubble">${mediaHtml}${m.content ? escapeHtml(m.content) : ''}</div>
-        </div>`;
-      })
-      .join('');
+    el.innerHTML = messages.map((m) => {
+      const mine = Number(m.sender_id) === currentUser.id;
+      const mediaHtml =
+        m.media_type === 'image' && m.media_url
+          ? `<img src="${escapeHtml(m.media_url)}" style="max-width:240px;border-radius:10px;display:block;margin-bottom:4px;">`
+          : m.media_type === 'audio' && m.media_url
+          ? `<audio controls src="${escapeHtml(m.media_url)}" style="max-width:260px;margin-bottom:4px;"></audio>`
+          : '';
+      return `<div class="msg ${mine ? 'mine' : 'theirs'}">
+        <div class="sender">${escapeHtml(m.display_name || '')}</div>
+        <div class="bubble">${mediaHtml}${m.content ? escapeHtml(m.content) : ''}</div>
+      </div>`;
+    }).join('');
     el.scrollTop = el.scrollHeight;
   }
 
   function escapeHtml(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = String(str ?? '');
     return div.innerHTML;
+  }
+
+  function showError(message) {
+    const note = document.getElementById('sending-note');
+    note.textContent = message || 'خطایی رخ داد.';
+    note.style.display = 'block';
+  }
+
+  function setSending(on, text = 'در حال ارسال...') {
+    const note = document.getElementById('sending-note');
+    note.textContent = text;
+    note.style.display = on ? 'block' : 'none';
   }
 
   async function sendMessage() {
     const input = document.getElementById('msg-input');
     const text = input.value.trim();
-    if (!text) return;
-    if (mode === 'private' && !activeContactId) return;
-
-    await api.sendMessage({
-      chat_type: mode,
-      recipient_id: mode === 'private' ? activeContactId : undefined,
-      content: text,
-    });
-    input.value = '';
-    loadMessages();
+    if (!text || (mode === 'private' && !activeContactId)) return;
+    setSending(true);
+    try {
+      await api.sendMessage({
+        chat_type: mode,
+        recipient_id: mode === 'private' ? activeContactId : undefined,
+        content: text,
+      });
+      input.value = '';
+      await loadMessages();
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setSending(false);
+    }
   }
 
   document.getElementById('send-btn').addEventListener('click', sendMessage);
@@ -140,13 +161,12 @@
     pollTimer = setInterval(loadMessages, 3000);
   }
 
-  function setSending(on) {
-    document.getElementById('sending-note').style.display = on ? 'block' : 'none';
-  }
-
   // ===== ارسال عکس =====
   document.getElementById('img-btn').addEventListener('click', () => {
-    if (mode === 'private' && !activeContactId) return;
+    if (mode === 'private' && !activeContactId) {
+      showError('اول یک مخاطب خصوصی را انتخاب کن.');
+      return;
+    }
     document.getElementById('img-input').click();
   });
 
@@ -162,7 +182,9 @@
         media_url: uploadResult.directLink,
         media_type: 'image',
       });
-      loadMessages();
+      await loadMessages();
+    } catch (err) {
+      showError(err.message);
     } finally {
       setSending(false);
       e.target.value = '';
@@ -175,7 +197,10 @@
   let isRecording = false;
 
   document.getElementById('voice-btn').addEventListener('click', async () => {
-    if (mode === 'private' && !activeContactId) return;
+    if (mode === 'private' && !activeContactId) {
+      showError('اول یک مخاطب خصوصی را انتخاب کن.');
+      return;
+    }
 
     if (isRecording) {
       mediaRecorder.stop();
@@ -184,34 +209,66 @@
       return;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showError('برای ضبط ویس، سایت باید با HTTPS باز شود. آدرس فعلی HTTP است.');
+      return;
+    }
 
-    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-    mediaRecorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      audioChunks = [];
 
-      setSending(true);
-      try {
-        const uploadResult = await api.uploadFile(file);
-        await api.sendMessage({
-          chat_type: mode,
-          recipient_id: mode === 'private' ? activeContactId : undefined,
-          media_url: uploadResult.directLink,
-          media_type: 'audio',
-        });
-        loadMessages();
-      } finally {
-        setSending(false);
-      }
-    };
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size) audioChunks.push(e.data);
+      };
 
-    mediaRecorder.start();
-    isRecording = true;
-    document.getElementById('voice-btn').textContent = '⏹';
+      mediaRecorder.onerror = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        isRecording = false;
+        document.getElementById('voice-btn').textContent = '🎙';
+        showError('ضبط ویس با خطا مواجه شد.');
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunks, { type: mimeType });
+        if (!blob.size) {
+          showError('صدای ضبط‌شده خالی است. دوباره امتحان کن.');
+          return;
+        }
+
+        const extension = mimeType.includes('webm') ? 'webm' : 'audio';
+        const file = new File([blob], `voice_${Date.now()}.${extension}`, { type: mimeType });
+        setSending(true);
+        try {
+          const uploadResult = await api.uploadFile(file);
+          await api.sendMessage({
+            chat_type: mode,
+            recipient_id: mode === 'private' ? activeContactId : undefined,
+            media_url: uploadResult.directLink,
+            media_type: 'audio',
+          });
+          await loadMessages();
+        } catch (err) {
+          showError(err.message);
+        } finally {
+          setSending(false);
+        }
+      };
+
+      mediaRecorder.start(250);
+      isRecording = true;
+      document.getElementById('voice-btn').textContent = '⏹';
+      setSending(true, 'در حال ضبط ویس... برای پایان دوباره روی ⏹ بزن.');
+    } catch (err) {
+      showError(err.name === 'NotAllowedError'
+        ? 'دسترسی میکروفون رد شد. اجازه Microphone را برای سایت فعال کن.'
+        : `میکروفون در دسترس نیست: ${err.message}`);
+    }
   });
 </script>
 </body>
