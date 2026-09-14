@@ -3,3 +3,7 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home3/fnuyssjv/public_html/
     - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp .htaccess $DEPLOYPATH/.htaccess
+    - /bin/cp .user.ini $DEPLOYPATH/.user.ini
+    - /bin/mkdir -p $DEPLOYPATH/.sessions
+    - /bin/chmod 700 $DEPLOYPATH/.sessions
