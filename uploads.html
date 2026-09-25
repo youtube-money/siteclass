@@ -11,7 +11,7 @@
 <main style="max-width:700px"><h1>آپلود فایل</h1><p style="color:var(--text-muted);font-size:14px">فایل‌های سنگین مستقیم به Google Drive کلاس می‌روند؛ روی فضای هاست ذخیره نمی‌شوند.</p>
 <div class="glass upload-box"><input type="file" id="file-input"><button class="btn btn-primary" id="upload-btn" style="margin-inline-start:10px">آپلود کن</button><div class="progress" id="progress"><div id="progress-bar"></div></div><div class="upload-status" id="status"></div><p class="error-text" id="error-msg" style="display:none;margin-top:10px"></p></div>
 <h3>فایل‌های آپلودشده</h3><ul id="uploads-list" style="padding-inline-start:20px"></ul></main>
-<script src="assets/js/api.js?v=20260914-drive1"></script><script>
+<script src="assets/js/api.js?v=20260925-drive2"></script><script>
 requirePageLogin('uploads.html').then(user=>{if(user)loadUploads();});
 async function loadUploads(){try{const data=await api.getAllUploads();document.getElementById('uploads-list').innerHTML=(data.uploads||[]).map(u=>`<li style="margin-bottom:7px"><a href="${u.drive_view_link}" target="_blank" rel="noopener">${u.filename}</a><span style="color:var(--text-muted);font-size:12px"> — ${u.display_name}</span></li>`).join('')||'<p style="color:var(--text-muted)">هنوز فایلی آپلود نشده.</p>';}catch(e){document.getElementById('uploads-list').innerHTML=`<p class="error-text">${escapeHtml(e.message)}</p>`;}}
 function escapeHtml(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
