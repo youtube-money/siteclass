@@ -12,7 +12,7 @@ $stmt = $pdo->query(
 
 $uploads = [];
 foreach ($stmt->fetchAll() as $u) {
-    $u['direct_link'] = 'https://drive.google.com/uc?export=view&id=' . rawurlencode($u['drive_file_id']);
+    $u['direct_link'] = '/api/google-file.php?id=' . rawurlencode($u['drive_file_id']);
     $u['view_link'] = $u['drive_view_link'] ?: ('https://drive.google.com/file/d/' . rawurlencode($u['drive_file_id']) . '/view');
     $uploads[] = $u;
 }
