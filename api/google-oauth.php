@@ -40,7 +40,13 @@ function googleOAuthGetAccessToken(): string {
     $response = curl_exec($ch); $error = curl_error($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
     $data = json_decode((string)$response, true);
     if ($response === false || $error || $code < 200 || $code >= 300 || empty($data['access_token'])) {
-        throw new Exception('تازه‌سازی دسترسی Google Drive ناموفق بود: ' . ($data['error_description'] ?? $error ?: $response));
+        $oauthError = (string)($data['error'] ?? '');
+        $description = (string)($data['error_description'] ?? $error ?: $response);
+        if ($oauthError === 'invalid_grant') {
+            @unlink($path);
+            throw new Exception('اتصال Google Drive منقضی یا لغو شده است. باید دوباره Google Drive را متصل کنی.');
+        }
+        throw new Exception('تازه‌سازی دسترسی Google Drive ناموفق بود: ' . $description);
     }
     $token['access_token'] = $data['access_token'];
     $token['expires_in'] = (int)($data['expires_in'] ?? 3600);
