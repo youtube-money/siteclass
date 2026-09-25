@@ -18,5 +18,11 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$me['id'], $otherId, $otherId, $me['id']]);
 $messages = array_reverse($stmt->fetchAll());
+foreach ($messages as &$message) {
+    if (!empty($message['media_url']) && preg_match('~drive\\.google\\.com/(?:uc\\?[^#]*id=|file/d/)([A-Za-z0-9_-]+)~', (string)$message['media_url'], $m)) {
+        $message['media_url'] = '/api/google-file.php?id=' . rawurlencode($m[1]);
+    }
+}
+unset($message);
 
 jsonResponse(['messages' => $messages]);
