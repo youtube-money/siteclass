@@ -66,6 +66,12 @@ try {
     error_log('[SITECLASS DRIVE] upload session created: http=' . $code . ' id=' . $uploadId . ' name=' . $name . ' size=' . $size . ' mime=' . $mimeType);
     jsonResponse(['success'=>true,'uploadId'=>$uploadId,'name'=>$name,'size'=>$size,'mimeType'=>$mimeType]);
 } catch (Throwable $e) {
-    error_log('[SITECLASS DRIVE] upload-session exception: ' . $e->getMessage());
-    jsonResponse(['error'=>'شروع آپلود ناموفق بود: '.$e->getMessage()], 502);
+    $message = $e->getMessage();
+    error_log('[SITECLASS DRIVE] upload-session exception: ' . $message);
+    $reauthorize = str_contains($message, 'دوباره Google Drive را متصل');
+    jsonResponse([
+        'error' => 'شروع آپلود ناموفق بود: ' . $message,
+        'reauthorize' => $reauthorize,
+        'connectUrl' => $reauthorize ? '/api/google-drive-connect.php' : null,
+    ], $reauthorize ? 401 : 502);
 }
