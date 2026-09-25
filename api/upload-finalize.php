@@ -26,7 +26,7 @@ try {
     if(isset($driveFile['size'])&&(int)$driveFile['size']!==$size)throw new Exception('اندازه فایل کامل با اطلاعات ارسالی مطابقت ندارد.');
 
     makeDriveFilePublic($accessToken,$fileId);
-    $directLink='https://drive.google.com/uc?export=view&id='.rawurlencode($fileId);
+    $directLink='/api/google-file.php?id='.rawurlencode($fileId);
     $viewLink=$driveFile['webViewLink']??'https://drive.google.com/file/d/'.$fileId.'/view';
     $pdo=getDB();
     $stmt=$pdo->prepare('INSERT INTO uploads (uploader_id, filename, drive_file_id, drive_view_link) VALUES (?, ?, ?, ?)');
