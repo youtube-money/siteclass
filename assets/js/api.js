@@ -53,7 +53,13 @@ async function uploadFileDirectToDrive(file, onProgress) {
   });
   const startText = await startRes.text(); let startData={};
   try{startData=startText?JSON.parse(startText):{};}catch(_){startData={_raw:startText};}
-  if(!startRes.ok||!startData.uploadId) throw new Error(startData.error||startData._raw||`شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
+  if(!startRes.ok||!startData.uploadId){
+    if(startData.reauthorize && startData.connectUrl){
+      const go = confirm('اتصال Google Drive منقضی یا لغو شده است. الان دوباره Google Drive را متصل کنیم؟');
+      if(go) location.href = startData.connectUrl;
+    }
+    throw new Error(startData.error||startData._raw||`شروع آپلود ناموفق بود (HTTP ${startRes.status})`);
+  }
 
   const chunkSize = 8 * 1024 * 1024;
   let driveFile = null;
