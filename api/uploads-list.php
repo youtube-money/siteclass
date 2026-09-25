@@ -10,4 +10,10 @@ $stmt = $pdo->query(
      ORDER BY u.id DESC LIMIT 200'
 );
 
-jsonResponse(['uploads' => $stmt->fetchAll()]);
+$uploads = [];
+foreach ($stmt->fetchAll() as $u) {
+    $u['direct_link'] = 'https://drive.google.com/uc?export=view&id=' . rawurlencode($u['drive_file_id']);
+    $u['view_link'] = $u['drive_view_link'] ?: ('https://drive.google.com/file/d/' . rawurlencode($u['drive_file_id']) . '/view');
+    $uploads[] = $u;
+}
+jsonResponse(['uploads'=>$uploads]);
