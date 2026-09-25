@@ -2,7 +2,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/session-helper.php';
 
-requireRole(['special', 'admin']);
+requireLogin();
 
 $pdo = getDB();
 $stmt = $pdo->query(
@@ -23,8 +23,7 @@ foreach ($stmt->fetchAll() as $post) {
         }
         $post['content'] = preg_replace('/^__SCMEDIA__[A-Za-z0-9+\/=]+__ENDSCMEDIA__\s*/', '', $post['content']);
     }
-
     $posts[] = $post;
 }
 
-jsonResponse(['posts' => $posts]);
+jsonResponse(['posts'=>$posts]);
